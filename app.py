@@ -28,9 +28,15 @@ def get_config(chave, default=None):
 def set_config(chave, valor, usuario):
     sb = get_supabase()
     old = get_config(chave)
-    sb.table("configuracoes").upsert({"chave": chave, "valor": str(valor), "updated_by": usuario}).execute()
-    sb.table("log_alteracoes").insert({"tabela": "configuracoes", "campo": chave,
-        "valor_anterior": str(old), "valor_novo": str(valor), "usuario": usuario}).execute()
+    existing = sb.table("configuracoes").select("id").eq("chave", chave).execute()
+    if existing.data:
+        sb.table("configuracoes").update({"valor": str(valor), "updated_by": usuario}).eq("chave", chave).execute()
+    else:
+        sb.table("configuracoes").insert({"chave": chave, "valor": str(valor), "updated_by": usuario}).execute()
+    try:
+        sb.table("log_alteracoes").insert({"tabela": "configuracoes", "campo": chave, "valor_anterior": str(old), "valor_novo": str(valor), "usuario": usuario}).execute()
+    except:
+        pass
 
 def get_ciclos():
     res = get_supabase().table("ciclos").select("*").order("id", desc=True).execute()
