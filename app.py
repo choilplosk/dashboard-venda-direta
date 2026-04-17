@@ -250,11 +250,14 @@ def processar_ciclo(dfs, metas_list, setores_list, cfg):
 # COMPONENTES VISUAIS
 # =============================================
 def kpi_grande(label, valor, subtexto=None, cor="#1565C0"):
-    sub = f'<div style="font-size:13px;color:#888;margin-top:4px">{subtexto}</div>' if subtexto else ""
-    st.markdown(f"""<div style="background:white;border-radius:12px;padding:20px;border:1px solid #eee;text-align:center">
-        <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">{label}</div>
-        <div style="font-size:32px;font-weight:700;color:{cor}">{valor}</div>{sub}
-    </div>""", unsafe_allow_html=True)
+    sub = f'<div style="font-size:12px;color:#888;margin-top:6px">{subtexto}</div>' if subtexto else ""
+    html = (
+        f'<div style="background:white;border-radius:12px;padding:20px;border:1px solid #eee;text-align:center">'
+        f'<div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">{label}</div>'
+        f'<div style="font-size:32px;font-weight:700;color:{cor}">{valor}</div>'
+        f'{sub}</div>'
+    )
+    st.markdown(html, unsafe_allow_html=True)
 
 def semaforo_simples(pct, label, realizado_str, meta_str):
     cor = "#9E9E9E" if pct==0 else ("#4CAF50" if pct>=100 else ("#FFC107" if pct>=95 else "#F44336"))
@@ -584,13 +587,37 @@ def pg_financeiro():
         pct_multi_med = df_res['pct_multimarcas'].mean()
         pct_ativ_med = df_res['pct_atividade'].mean()
 
+        # Calcular metas consolidadas do grupo
+        meta_receita_total = sum(
+            float(metas.get(s['id'],{}).get('meta_boticario',0)) +
+            float(metas.get(s['id'],{}).get('meta_eudora',0)) +
+            float(metas.get(s['id'],{}).get('meta_oui',0)) +
+            float(metas.get(s['id'],{}).get('meta_qdb',0)) +
+            float(metas.get(s['id'],{}).get('meta_cabelos',0)) +
+            float(metas.get(s['id'],{}).get('meta_make',0))
+            for s in sf_list
+        )
+        meta_multi_med = sum(float(metas.get(s['id'],{}).get('meta_multimarcas',0)) for s in sf_list) / len(sf_list) if sf_list else 0
+        meta_ativ_med = sum(float(metas.get(s['id'],{}).get('meta_atividade',0)) for s in sf_list) / len(sf_list) if sf_list else 0
+
+        pct_rec = receita_total/meta_receita_total*100 if meta_receita_total > 0 else 0
+        pct_multi_cum = pct_multi_med/meta_multi_med*100 if meta_multi_med > 0 else 0
+        pct_ativ_cum = pct_ativ_med/meta_ativ_med*100 if meta_ativ_med > 0 else 0
+
+        def sub_meta(realizado_str, meta_str, pct_cum):
+            cor = "#4CAF50" if pct_cum>=100 else ("#FFC107" if pct_cum>=95 else ("#F44336" if pct_cum>0 else "#999"))
+            return f'Meta: {meta_str} <span style="color:{cor};font-weight:600">({pct_cum:.0f}%)</span>' if pct_cum > 0 else f'Meta: {meta_str}'
+
         st.markdown("### 📊 Visão do Grupo")
         c1,c2,c3,c4,c5 = st.columns(5)
-        with c1: kpi_grande("Receita Total", fmt_moeda(receita_total))
+        with c1: kpi_grande("Receita Total", fmt_moeda(receita_total),
+            subtexto=sub_meta("", fmt_moeda(meta_receita_total), pct_rec) if meta_receita_total>0 else None)
         with c2: kpi_grande("Ativos Total", f"{total_ativos:,}".replace(",","."))
         with c3: kpi_grande("IAF Médio", fmt_pct(iaf_medio), cor=cor_class(class_iaf(iaf_medio,{})))
-        with c4: kpi_grande("Multimarcas Méd.", fmt_pct(pct_multi_med))
-        with c5: kpi_grande("Atividade Méd.", fmt_pct(pct_ativ_med))
+        with c4: kpi_grande("Multimarcas Méd.", fmt_pct(pct_multi_med),
+            subtexto=sub_meta("", fmt_pct(meta_multi_med), pct_multi_cum) if meta_multi_med>0 else None)
+        with c5: kpi_grande("Atividade Méd.", fmt_pct(pct_ativ_med),
+            subtexto=sub_meta("", fmt_pct(meta_ativ_med), pct_ativ_cum) if meta_ativ_med>0 else None)
         st.markdown("---")
 
         # Rankings por indicador
