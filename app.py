@@ -259,11 +259,17 @@ def kpi_grande(label, valor, subtexto=None, cor="#1565C0"):
 def semaforo_simples(pct, label, realizado_str, meta_str):
     cor = "#9E9E9E" if pct==0 else ("#4CAF50" if pct>=100 else ("#FFC107" if pct>=95 else "#F44336"))
     ic = "⚪" if pct==0 else ("🟢" if pct>=100 else ("🟡" if pct>=95 else "🔴"))
-    return f"""<div style="display:flex;justify-content:space-between;align-items:center;
-        padding:8px 0;border-bottom:1px solid #f0f0f0">
-        <span style="font-size:13px;color:#555">{ic} {label}</span>
-        <span style="font-size:13px;font-weight:600;color:{cor}">{realizado_str} <span style="font-size:11px;color:#aaa">/ {meta_str} ({pct:.0f}%)</span></span>
-    </div>"""
+    pct_str = f"{pct:.0f}%" if pct > 0 else "—"
+    return (
+        f'<div style="display:flex;justify-content:space-between;align-items:center;'
+        f'padding:8px 0;border-bottom:1px solid #f0f0f0">'
+        f'<span style="font-size:13px;color:#555">{ic} {label}</span>'
+        f'<div style="text-align:right">'
+        f'<span style="font-size:13px;font-weight:600;color:{cor}">{realizado_str}</span>'
+        f'<span style="font-size:11px;color:#aaa"> / {meta_str}</span>'
+        f'<br><span style="font-size:11px;color:{cor};font-weight:600">{pct_str} da meta</span>'
+        f'</div></div>'
+    )
 
 def linha_ranking(pos, nome, iaf, cl, delta=None, extra=None):
     cor = cor_class(cl)
@@ -389,13 +395,15 @@ def pg_home():
 
     # Tabela de classificações
     st.markdown("### 🏅 Classificações")
-    todos_res = df.sort_values('iaf', ascending=False)
-    nomes_map = {}
+    # Filtrar apenas setores ativos
     try:
-        slist = sb.table("setores").select("id,nome").execute().data or []
+        slist = sb.table("setores").select("id,nome,ativo").execute().data or []
         nomes_map = {s['id']: s['nome'] for s in slist}
+        ids_ativos_home = {s['id'] for s in slist if s['ativo']}
     except:
-        pass
+        nomes_map = {}
+        ids_ativos_home = set()
+    todos_res = df[df['setor_id'].isin(ids_ativos_home)].sort_values('iaf', ascending=False)
 
     for _, r in todos_res.iterrows():
         nm = nomes_map.get(r['setor_id'], str(r['setor_id']))
@@ -773,48 +781,53 @@ def pg_er():
     with c4: kpi_grande("Caixas Acima da Meta", f"{acima}/{len(df)}", cor="#F44336" if acima>0 else "#4CAF50")
 
     st.markdown("---")
-    st.markdown("### 🏷️ Ranking dos Caixas")
+    st.markdown("### 🏆 Ranking Multimarca")
 
-    for pos, (_, row) in enumerate(df.iterrows(), 1):
-        p = row['pct_nao_multimarca']
-        cor = "#F44336" if p>meta_nm else ("#FFC107" if p>meta_nm*0.9 else "#4CAF50")
-        ic = "🔴" if p>meta_nm else ("🟡" if p>meta_nm*0.9 else "🟢")
-        pos_cor = ["#F9A825","#9E9E9E","#A1887F"]
-        pb = pos_cor[pos-1] if pos<=3 else "#f0f0f0"
-        pt = "white" if pos<=3 else "#555"
-        st.markdown(f"""<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;
-            background:white;border-radius:8px;border:1px solid #eee;margin-bottom:6px">
-            <div style="min-width:28px;height:28px;border-radius:50%;background:{pb};
-                display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:{pt}">{pos}</div>
-            <div style="flex:1">
-                <div style="display:flex;justify-content:space-between;align-items:center">
-                    <span style="font-weight:600;font-size:14px">{row['usuario_finalizacao']}</span>
-                    <div style="display:flex;align-items:center;gap:12px">
-                        <span style="font-size:12px;color:#999">{int(row['pedidos_nao_multimarca'])} de {int(row['total_pedidos'])} pedidos</span>
-                        <span style="font-size:16px;font-weight:700;color:{cor}">{ic} {fmt_pct(p)}</span>
-                        <span style="font-size:11px;color:#aaa">meta ≤{meta_nm:.0f}%</span>
-                    </div>
-                </div>
-            </div>
-        </div>""", unsafe_allow_html=True)
+    # Calcular pedidos multimarca e ordenar decrescente
+    df['pedidos_multimarca'] = df['total_pedidos'] - df['pedidos_nao_multimarca']
+    df['pct_multimarca'] = 100 - df['pct_nao_multimarca']
+    df_rank = df.sort_values('pedidos_multimarca', ascending=False).reset_index(drop=True)
+
+    for pos, row in df_rank.iterrows():
+        pos_num = pos + 1
+        pm = row['pedidos_multimarca']
+        pct_m = row['pct_multimarca']
+        cor = "#4CAF50" if pct_m >= 70 else ("#FFC107" if pct_m >= 50 else "#F44336")
+        ic = "🟢" if pct_m >= 70 else ("🟡" if pct_m >= 50 else "🔴")
+        pos_cores = ["#F9A825","#9E9E9E","#A1887F"]
+        pb = pos_cores[pos_num-1] if pos_num<=3 else "#f0f0f0"
+        pt = "white" if pos_num<=3 else "#555"
+        html = (
+            f'<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;'
+            f'background:white;border-radius:8px;border:1px solid #eee;margin-bottom:6px">'
+            f'<div style="min-width:28px;height:28px;border-radius:50%;background:{pb};'
+            f'display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:{pt}">{pos_num}</div>'
+            f'<div style="flex:1">'
+            f'<div style="display:flex;justify-content:space-between;align-items:center">'
+            f'<span style="font-weight:600;font-size:14px">{row["usuario_finalizacao"]}</span>'
+            f'<div style="display:flex;align-items:center;gap:12px">'
+            f'<span style="font-size:12px;color:#999">{int(pm)} multimarca de {int(row["total_pedidos"])} pedidos</span>'
+            f'<span style="font-size:16px;font-weight:700;color:{cor}">{ic} {fmt_pct(pct_m)}</span>'
+            f'</div></div></div></div>'
+        )
+        st.markdown(html, unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown("### 📊 Comparativo por Caixa")
-    cores = ['#F44336' if p>meta_nm else '#4CAF50' for p in df['pct_nao_multimarca']]
-    fig = go.Figure(go.Bar(x=df['usuario_finalizacao'],y=df['pct_nao_multimarca'],
-        marker_color=cores,text=[fmt_pct(p) for p in df['pct_nao_multimarca']],textposition='outside'))
-    fig.add_hline(y=meta_nm,line_dash="dash",line_color="#FF9800",annotation_text=f"Meta {meta_nm:.0f}%")
-    fig.update_layout(height=360,margin=dict(t=10,b=10)); fig.update_yaxes(ticksuffix="%")
+    df_graf = df_rank.sort_values('pedidos_multimarca', ascending=False)
+    cores = ["#4CAF50" if p>=70 else ("#FFC107" if p>=50 else "#F44336") for p in df_graf['pct_multimarca']]
+    fig = go.Figure(go.Bar(x=df_graf['usuario_finalizacao'],y=df_graf['pct_multimarca'],
+        marker_color=cores,text=[fmt_pct(p) for p in df_graf['pct_multimarca']],textposition='outside'))
+    fig.update_layout(height=360,margin=dict(t=10,b=10)); fig.update_yaxes(ticksuffix="%",title="% Multimarca")
     st.plotly_chart(fig,use_container_width=True)
 
     evol=[]
     for c in ciclos[-6:]:
         for r in get_resultados_er(c['id']):
-            evol.append({'Ciclo':c['nome'],'Caixa':r['usuario_finalizacao'],'% Não Multimarca':r['pct_nao_multimarca']})
+            evol.append({'Ciclo':c['nome'],'Caixa':r['usuario_finalizacao'],'% Multimarca':100-r['pct_nao_multimarca']})
     if evol:
         st.markdown("### 📈 Evolução por Ciclo")
-        fig2=px.line(pd.DataFrame(evol),x='Ciclo',y='% Não Multimarca',color='Caixa',markers=True)
-        fig2.add_hline(y=meta_nm,line_dash="dash",line_color="#FF9800",annotation_text="Meta")
+        fig2=px.line(pd.DataFrame(evol),x='Ciclo',y='% Multimarca',color='Caixa',markers=True)
         fig2.update_layout(height=300,margin=dict(t=10,b=10)); fig2.update_yaxes(ticksuffix="%")
         st.plotly_chart(fig2,use_container_width=True)
 
