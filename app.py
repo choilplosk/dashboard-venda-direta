@@ -554,7 +554,9 @@ def pg_financeiro():
     res = get_resultados(cs['id'],tipo='financeiro')
     metas = {m['setor_id']:m for m in get_metas(cs['id'])}
     res_d = {r['setor_id']:r for r in res}
-    sid_nm = {s['id']:s['nome'] for s in sf_list}
+    # Buscar nomes de todos os setores para garantir mapeamento correto
+    todos_setores = get_supabase().table("setores").select("id,nome").execute().data or []
+    sid_nm = {s['id']:s['nome'] for s in todos_setores}
 
     c_ant = next((c for c in ciclos if c['id']<cs['id']),None)
     r_ant = {r['setor_id']:r for r in get_resultados(c_ant['id'],tipo='financeiro')} if c_ant else {}
@@ -713,7 +715,10 @@ def pg_financeiro():
                 r=vals_radar + [vals_radar[0]],
                 theta=categorias + [categorias[0]],
                 fill='toself',
-                fillcolor=cor_class(r['classificacao']) + '33',
+                fillcolor='rgba(21,101,192,0.2)' if r['classificacao']=='Diamante' else (
+                    'rgba(249,168,37,0.2)' if r['classificacao']=='Ouro' else (
+                    'rgba(96,125,139,0.2)' if r['classificacao']=='Prata' else (
+                    'rgba(161,136,127,0.2)' if r['classificacao']=='Bronze' else 'rgba(158,158,158,0.2)'))),
                 line=dict(color=cor_class(r['classificacao']), width=2),
                 name=nome
             ))
