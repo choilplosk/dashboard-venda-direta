@@ -773,7 +773,7 @@ def pg_er():
     with c4: kpi_grande("Caixas Acima da Meta", f"{acima}/{len(df)}", cor="#F44336" if acima>0 else "#4CAF50")
 
     st.markdown("---")
-    st.markdown(f"### 🏷️ Ranking dos Caixas — Meta: ≤{meta_nm:.0f}% não multimarca")
+    st.markdown("### 🏷️ Ranking dos Caixas")
 
     for pos, (_, row) in enumerate(df.iterrows(), 1):
         p = row['pct_nao_multimarca']
