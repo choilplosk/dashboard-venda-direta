@@ -454,8 +454,11 @@ def pg_base():
     sb_list = get_setores(tipo='base')
     if not sb_list: st.info("Nenhum setor Base configurado."); return
 
-    res = get_resultados(cs['id'], tipo='base')
+    res_all = get_resultados(cs['id'], tipo='base')
     metas = {m['setor_id']:m for m in get_metas(cs['id'])}
+    # Filtrar apenas setores ativos
+    ids_ativos = {s['id'] for s in sb_list}
+    res = [r for r in res_all if r['setor_id'] in ids_ativos]
     res_d = {r['setor_id']:r for r in res}
     sid_nm = {s['id']:s['nome'] for s in sb_list}
 
@@ -551,8 +554,11 @@ def pg_financeiro():
     sf_list = get_setores(tipo='financeiro')
     if not sf_list: st.info("Nenhum setor Financeiro configurado."); return
 
-    res = get_resultados(cs['id'],tipo='financeiro')
+    res_all = get_resultados(cs['id'],tipo='financeiro')
     metas = {m['setor_id']:m for m in get_metas(cs['id'])}
+    # Filtrar apenas setores ativos
+    ids_ativos_fin = {s['id'] for s in sf_list}
+    res = [r for r in res_all if r['setor_id'] in ids_ativos_fin]
     res_d = {r['setor_id']:r for r in res}
     # Buscar nomes de todos os setores para garantir mapeamento correto
     todos_setores = get_supabase().table("setores").select("id,nome").execute().data or []
