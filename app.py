@@ -795,22 +795,29 @@ def pg_er():
     if not res: st.info("📊 Sem dados ER para este ciclo."); return
 
     df = pd.DataFrame(res)
-    tp = df['total_pedidos'].sum()
-    tnm = df['pedidos_nao_multimarca'].sum()
+    tp = int(df['total_pedidos'].sum())
+    tnm = int(df['pedidos_nao_multimarca'].sum())
     pg = tnm/tp*100 if tp>0 else 0
-    acima = len(df[df['pct_nao_multimarca']>meta_nm])
 
-    # KPIs
+    # Buscar dados brutos do ER do Supabase para análises adicionais
+    # Os dados brutos ficam na sessão após o upload — usar df_er_raw se disponível
+    df_er_raw = st.session_state.get('df_er_raw', None)
+
+    # KPIs — substituir "caixas acima da meta" por revendedores únicos
+    rev_unicos = int(df_er_raw['Pessoa'].nunique()) if df_er_raw is not None else None
     c1,c2,c3,c4 = st.columns(4)
-    with c1: kpi_grande("Total Pedidos", f"{int(tp):,}".replace(",","."))
-    with c2: kpi_grande("Não Multimarca", f"{int(tnm):,}".replace(",","."))
+    with c1: kpi_grande("Total Pedidos", f"{tp:,}".replace(",","."))
+    with c2: kpi_grande("Não Multimarca", f"{tnm:,}".replace(",","."))
     with c3: kpi_grande("% Não Multimarca Geral", fmt_pct(pg), cor="#F44336" if pg>meta_nm else "#4CAF50")
-    with c4: kpi_grande("Caixas Acima da Meta", f"{acima}/{len(df)}", cor="#F44336" if acima>0 else "#4CAF50")
+    with c4:
+        if rev_unicos is not None:
+            kpi_grande("Revendedores Únicos", f"{rev_unicos:,}".replace(",","."), "visitaram o ER no ciclo")
+        else:
+            kpi_grande("Revendedores Únicos", "—", "Reprocesse os dados para ver")
 
     st.markdown("---")
     st.markdown("### 🏆 Ranking Multimarca")
 
-    # Calcular pedidos multimarca e ordenar decrescente
     df['pedidos_multimarca'] = df['total_pedidos'] - df['pedidos_nao_multimarca']
     df['pct_multimarca'] = 100 - df['pct_nao_multimarca']
     df_rank = df.sort_values('pedidos_multimarca', ascending=False).reset_index(drop=True)
@@ -838,6 +845,78 @@ def pg_er():
             f'</div></div></div></div>'
         )
         st.markdown(html, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Análises adicionais — apenas se dados brutos disponíveis
+    if df_er_raw is not None:
+        col_a, col_b, col_c = st.columns(3)
+
+        with col_a:
+            st.markdown("**📍 Revendedores por Bairro**")
+            total_rev = df_er_raw['Pessoa'].nunique()
+            bairro_rev = df_er_raw.groupby('Bairro')['Pessoa'].nunique().reset_index()
+            bairro_rev.columns = ['Bairro','Revendedores']
+            bairro_rev['%'] = (bairro_rev['Revendedores'] / total_rev * 100).round(1)
+            bairro_rev = bairro_rev.sort_values('Revendedores', ascending=False)
+            for _, row in bairro_rev.iterrows():
+                st.markdown(
+                    f'<div style="display:flex;justify-content:space-between;padding:5px 0;'
+                    f'border-bottom:1px solid #f0f0f0;font-size:13px">'
+                    f'<span style="color:#555">{row["Bairro"]}</span>'
+                    f'<span style="font-weight:600">{row["%"]:.1f}%</span>'
+                    f'</div>', unsafe_allow_html=True)
+
+        with col_b:
+            st.markdown("**🏅 Revendedores por Segmentação**")
+            seg_rev = df_er_raw.groupby('Papel')['Pessoa'].nunique().reset_index()
+            seg_rev.columns = ['Segmentação','Revendedores']
+            seg_rev['%'] = (seg_rev['Revendedores'] / total_rev * 100).round(1)
+            seg_rev = seg_rev.sort_values('Revendedores', ascending=False)
+            for _, row in seg_rev.iterrows():
+                st.markdown(
+                    f'<div style="display:flex;justify-content:space-between;padding:5px 0;'
+                    f'border-bottom:1px solid #f0f0f0;font-size:13px">'
+                    f'<span style="color:#555">{row["Segmentação"]}</span>'
+                    f'<span style="font-weight:600">{row["%"]:.1f}%</span>'
+                    f'</div>', unsafe_allow_html=True)
+
+        with col_c:
+            st.markdown("**💳 Forma de Pagamento**")
+            total_ped = len(df_er_raw)
+            pag_cnt = df_er_raw['PlanoPagamento'].value_counts().reset_index()
+            pag_cnt.columns = ['Forma','Pedidos']
+            pag_cnt['%'] = (pag_cnt['Pedidos'] / total_ped * 100).round(1)
+            for _, row in pag_cnt.iterrows():
+                st.markdown(
+                    f'<div style="display:flex;justify-content:space-between;padding:5px 0;'
+                    f'border-bottom:1px solid #f0f0f0;font-size:13px">'
+                    f'<span style="color:#555">{row["Forma"]}</span>'
+                    f'<span style="font-weight:600">{row["%"]:.1f}%</span>'
+                    f'</div>', unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        # Gráfico frequência por dia
+        st.markdown("### 📅 Frequência de Revendedores por Dia")
+        dias_pt = {0:'Segunda',1:'Terça',2:'Quarta',3:'Quinta',4:'Sexta',5:'Sábado',6:'Domingo'}
+        df_er_raw['Data Captação'] = pd.to_datetime(df_er_raw['Data Captação'], dayfirst=True, errors='coerce')
+        freq_dia = df_er_raw.groupby('Data Captação')['Pessoa'].nunique().reset_index()
+        freq_dia.columns = ['Data','Revendedores']
+        freq_dia = freq_dia.dropna(subset=['Data']).sort_values('Data')
+        freq_dia['DiaNome'] = freq_dia['Data'].dt.dayofweek.map(dias_pt)
+        freq_dia['Label'] = freq_dia['Data'].dt.strftime('%d/%m') + ' (' + freq_dia['DiaNome'] + ')'
+        fig3 = go.Figure(go.Bar(
+            x=freq_dia['Label'], y=freq_dia['Revendedores'],
+            marker_color='#1565C0',
+            text=freq_dia['Revendedores'], textposition='outside'
+        ))
+        fig3.update_layout(height=380, margin=dict(t=20,b=60),
+                          xaxis_tickangle=-45, yaxis_title="Revendedores Únicos")
+        st.plotly_chart(fig3, use_container_width=True)
+
+    else:
+        st.info("ℹ️ Para ver análises de bairro, segmentação, pagamento e frequência, reprocesse os dados em Configurações → Upload.")
 
     st.markdown("---")
     st.markdown("### 📊 Comparativo por Caixa")
@@ -1028,6 +1107,9 @@ def pg_config():
                         r['ciclo_id'] = ca['id']
                         sb.table("resultados_er").upsert(r,on_conflict="ciclo_id,usuario_finalizacao").execute()
                     for nm in uploaded: log_upload(ca['id'],nm,usuario)
+                    # Salvar ER bruto na sessão para análises da página ER
+                    if 'ER' in dfs:
+                        st.session_state['df_er_raw'] = dfs['ER']
                     st.success(f"✅ {len(uploaded)} arquivo(s) processados com sucesso!")
                 except Exception as e:
                     st.error(f"❌ Erro: {e}")
