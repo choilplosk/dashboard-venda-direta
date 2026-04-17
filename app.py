@@ -847,31 +847,36 @@ def pg_config():
                         st.success("✓"); st.rerun()
 
     elif aba == "Pontuação & IAF":
-        st.markdown("### Pontuação e IAF")
-        c1,c2 = st.columns(2)
-        with c1:
-            st.markdown("**Base**")
-            pts_ir = st.number_input("Pts Inícios+Reinícios", value=int(get_config('pts_inicios_reinicios',800)), step=50)
-            pts_g = st.number_input("Pts Meta Grupo", value=int(get_config('pts_meta_grupo',200)), step=50)
-            st.markdown("**Financeiro**")
-            pts_m = st.number_input("Pts por Marca", value=int(get_config('pts_por_marca_receita',100)), step=10)
-            pts_mu = st.number_input("Pts Multimarcas", value=int(get_config('pts_multimarcas',100)), step=10)
-            pts_c = st.number_input("Pts Cabelos %", value=int(get_config('pts_pct_cabelos',100)), step=10)
-            pts_mk = st.number_input("Pts Make %", value=int(get_config('pts_pct_make',100)), step=10)
-            pts_a = st.number_input("Pts Atividade", value=int(get_config('pts_atividade',100)), step=10)
-        with c2:
-            st.markdown("**Faixas de pontuação**")
-            f50 = st.number_input("≥X% = 50% pts", value=int(get_config('faixa_pontuacao_50pct',85)))
-            f75 = st.number_input("≥X% = 75% pts", value=int(get_config('faixa_pontuacao_75pct',95)))
-            f100 = st.number_input("≥X% = 100% pts", value=int(get_config('faixa_pontuacao_100pct',100)))
-            st.markdown("**Classificação IAF**")
-            br = st.number_input("Bronze ≥", value=int(get_config('faixa_bronze_min',65)))
-            pr = st.number_input("Prata ≥", value=int(get_config('faixa_prata_min',75)))
-            ou = st.number_input("Ouro ≥", value=int(get_config('faixa_ouro_min',85)))
-            di = st.number_input("Diamante ≥", value=int(get_config('faixa_diamante_min',95)))
-            st.markdown("**ER**")
-            mc = st.number_input("Meta máx % não multimarca caixa", value=float(get_config('meta_nao_multimarca_caixa',30)))
-        if st.button("💾 Salvar", use_container_width=True):
+        st.caption("Ajuste os pesos e faixas de classificação. Clique em Salvar ao terminar.")
+        t1,t2,t3 = st.tabs(["Pontuação Base","Pontuação Financeiro","Faixas & IAF"])
+        with t1:
+            c1,c2 = st.columns(2)
+            with c1: pts_ir = st.number_input("Inícios+Reinícios (pts)", value=int(get_config('pts_inicios_reinicios',800)), step=50)
+            with c2: pts_g = st.number_input("Meta Grupo (pts)", value=int(get_config('pts_meta_grupo',200)), step=50)
+        with t2:
+            c1,c2 = st.columns(2)
+            with c1:
+                pts_m = st.number_input("Por Marca (pts)", value=int(get_config('pts_por_marca_receita',100)), step=10)
+                pts_mu = st.number_input("Multimarcas (pts)", value=int(get_config('pts_multimarcas',100)), step=10)
+                pts_c = st.number_input("Cabelos % (pts)", value=int(get_config('pts_pct_cabelos',100)), step=10)
+            with c2:
+                pts_mk = st.number_input("Make % (pts)", value=int(get_config('pts_pct_make',100)), step=10)
+                pts_a = st.number_input("Atividade (pts)", value=int(get_config('pts_atividade',100)), step=10)
+                mc = st.number_input("Meta máx % não multimarca ER", value=float(get_config('meta_nao_multimarca_caixa',30)))
+        with t3:
+            c1,c2 = st.columns(2)
+            with c1:
+                st.caption("% da meta para pontuação parcial")
+                f50 = st.number_input("≥X% → 50% dos pts", value=int(get_config('faixa_pontuacao_50pct',85)))
+                f75 = st.number_input("≥X% → 75% dos pts", value=int(get_config('faixa_pontuacao_75pct',95)))
+                f100 = st.number_input("≥X% → 100% dos pts", value=int(get_config('faixa_pontuacao_100pct',100)))
+            with c2:
+                st.caption("IAF mínimo por classificação (%)")
+                br = st.number_input("Bronze ≥", value=int(get_config('faixa_bronze_min',65)))
+                pr = st.number_input("Prata ≥", value=int(get_config('faixa_prata_min',75)))
+                ou = st.number_input("Ouro ≥", value=int(get_config('faixa_ouro_min',85)))
+                di = st.number_input("Diamante ≥", value=int(get_config('faixa_diamante_min',95)))
+        if st.button("💾 Salvar configurações", use_container_width=True):
             for k,v in [('pts_inicios_reinicios',pts_ir),('pts_meta_grupo',pts_g),('pts_por_marca_receita',pts_m),
                         ('pts_multimarcas',pts_mu),('pts_pct_cabelos',pts_c),('pts_pct_make',pts_mk),('pts_atividade',pts_a),
                         ('faixa_pontuacao_50pct',f50),('faixa_pontuacao_75pct',f75),('faixa_pontuacao_100pct',f100),
@@ -881,71 +886,69 @@ def pg_config():
             st.success("✅ Salvo!")
 
     elif aba == "Ciclos & Metas":
-        st.markdown("### Ciclos")
-        with st.expander("➕ Novo ciclo"):
-            nc = st.text_input("Nome (ex: 05/2026)")
-            d1,d2 = st.columns(2)
-            di = d1.date_input("Início"); df_c = d2.date_input("Fim")
-            if st.button("Criar"):
-                if nc:
-                    sb.table("ciclos").insert({"nome":nc,"data_inicio":str(di),"data_fim":str(df_c),"ativo":True}).execute()
-                    st.success("Criado!"); st.rerun()
-        for c in get_ciclos():
-            cc1,cc2,cc3 = st.columns([3,2,2])
-            cc1.markdown(f"**{c['nome']}**")
-            cc2.markdown("✅ Ativo" if c['ativo'] else "⬜ Inativo")
-            if not c['ativo']:
-                with cc3:
-                    if st.button("Ativar",key=f"at{c['id']}"):
-                        sb.table("ciclos").update({"ativo":False}).execute()
-                        sb.table("ciclos").update({"ativo":True}).eq("id",c['id']).execute(); st.rerun()
-        st.markdown("---")
-        st.markdown("### Metas do Período")
-        ca = get_ciclo_ativo()
-        if not ca: st.warning("Crie um ciclo ativo."); return
-        st.info(f"Ciclo ativo: **{ca['nome']}**")
-        setores = get_setores()
-        mex = {m['setor_id']:m for m in get_metas(ca['id'])}
-        tb,tf = st.tabs(["Base","Financeiro"])
-        with tb:
-            for s in [x for x in setores if x['tipo']=='base']:
-                st.markdown(f"**{s['nome']}**")
-                ma = mex.get(s['id'],{})
-                b1,b2 = st.columns(2)
-                mir = b1.number_input("Meta I+R",min_value=0,value=int(ma.get('meta_inicios_reinicios',0)),key=f"mir{s['id']}")
-                rir = b2.number_input("Realizado I+R",min_value=0,value=int(ma.get('realizado_inicios_reinicios',0)),key=f"rir{s['id']}")
-                if st.button("💾",key=f"sb{s['id']}"):
-                    upsert_meta(ca['id'],s['id'],{'meta_inicios_reinicios':mir,'realizado_inicios_reinicios':rir,'updated_by':usuario})
-                    st.success("Salvo!")
-                st.markdown("---")
-        with tf:
-            for s in [x for x in setores if x['tipo']=='financeiro']:
-                st.markdown(f"**{s['nome']}**")
-                ma = mex.get(s['id'],{})
-                f1,f2,f3 = st.columns(3)
-                with f1:
-                    st.caption("Receitas R$")
-                    mbo = st.number_input("Boticário",min_value=0.0,value=float(ma.get('meta_boticario',0)),key=f"mb{s['id']}")
-                    meu = st.number_input("Eudora",min_value=0.0,value=float(ma.get('meta_eudora',0)),key=f"me{s['id']}")
-                    mou = st.number_input("OUI",min_value=0.0,value=float(ma.get('meta_oui',0)),key=f"mo{s['id']}")
-                    mqd = st.number_input("QDB",min_value=0.0,value=float(ma.get('meta_qdb',0)),key=f"mq{s['id']}")
-                    mca = st.number_input("Cabelos R$",min_value=0.0,value=float(ma.get('meta_cabelos',0)),key=f"mc{s['id']}")
-                    mma = st.number_input("Make R$",min_value=0.0,value=float(ma.get('meta_make',0)),key=f"mm{s['id']}")
-                with f2:
-                    st.caption("Indicadores %")
-                    mmu = st.number_input("Multimarcas%",0.0,100.0,float(ma.get('meta_multimarcas',0)),key=f"mmu{s['id']}")
-                    mpc = st.number_input("Cabelos%",0.0,100.0,float(ma.get('meta_pct_cabelos',0)),key=f"mpc{s['id']}")
-                    mpm = st.number_input("Make%",0.0,100.0,float(ma.get('meta_pct_make',0)),key=f"mpm{s['id']}")
-                    mat = st.number_input("Atividade%",0.0,100.0,float(ma.get('meta_atividade',0)),key=f"mat{s['id']}")
-                with f3:
-                    st.caption("Base")
-                    mtb = st.number_input("Tamanho Base",0,value=int(ma.get('tamanho_base',0)),key=f"mtb{s['id']}")
-                if st.button("💾",key=f"sf{s['id']}"):
-                    upsert_meta(ca['id'],s['id'],{'meta_boticario':mbo,'meta_eudora':meu,'meta_oui':mou,'meta_qdb':mqd,
-                        'meta_cabelos':mca,'meta_make':mma,'meta_multimarcas':mmu,'meta_pct_cabelos':mpc,
-                        'meta_pct_make':mpm,'meta_atividade':mat,'tamanho_base':mtb,'updated_by':usuario})
-                    st.success("Salvo!")
-                st.markdown("---")
+        tc,tm = st.tabs(["Ciclos","Metas do Período"])
+        with tc:
+            with st.expander("➕ Novo ciclo"):
+                nc = st.text_input("Nome (ex: 05/2026)")
+                d1,d2 = st.columns(2)
+                di = d1.date_input("Início"); df_c = d2.date_input("Fim")
+                if st.button("Criar"):
+                    if nc:
+                        sb.table("ciclos").insert({"nome":nc,"data_inicio":str(di),"data_fim":str(df_c),"ativo":True}).execute()
+                        st.success("Criado!"); st.rerun()
+            for c in get_ciclos():
+                cc1,cc2,cc3 = st.columns([3,2,2])
+                cc1.markdown(f"**{c['nome']}**")
+                cc2.markdown("✅ Ativo" if c['ativo'] else "⬜ Inativo")
+                if not c['ativo']:
+                    with cc3:
+                        if st.button("Ativar",key=f"at{c['id']}"):
+                            sb.table("ciclos").update({"ativo":False}).execute()
+                            sb.table("ciclos").update({"ativo":True}).eq("id",c['id']).execute(); st.rerun()
+        with tm:
+            ca = get_ciclo_ativo()
+            if not ca: st.warning("Crie e ative um ciclo primeiro."); st.stop()
+            st.caption(f"Ciclo ativo: **{ca['nome']}**")
+            setores = get_setores()
+            mex = {m['setor_id']:m for m in get_metas(ca['id'])}
+            tb,tf = st.tabs(["Base","Financeiro"])
+            with tb:
+                for s in [x for x in setores if x['tipo']=='base']:
+                    ma = mex.get(s['id'],{})
+                    with st.expander(s['nome'], expanded=False):
+                        b1,b2 = st.columns(2)
+                        mir = b1.number_input("Meta I+R",min_value=0,value=int(ma.get('meta_inicios_reinicios',0)),key=f"mir{s['id']}")
+                        rir = b2.number_input("Realizado I+R",min_value=0,value=int(ma.get('realizado_inicios_reinicios',0)),key=f"rir{s['id']}")
+                        if st.button("💾 Salvar",key=f"sb{s['id']}"):
+                            upsert_meta(ca['id'],s['id'],{'meta_inicios_reinicios':mir,'realizado_inicios_reinicios':rir,'updated_by':usuario})
+                            st.success("Salvo!")
+            with tf:
+                for s in [x for x in setores if x['tipo']=='financeiro']:
+                    ma = mex.get(s['id'],{})
+                    with st.expander(s['nome'], expanded=False):
+                        f1,f2,f3 = st.columns(3)
+                        with f1:
+                            st.caption("Receitas R$")
+                            mbo = st.number_input("Boticário",min_value=0.0,value=float(ma.get('meta_boticario',0)),key=f"mb{s['id']}")
+                            meu = st.number_input("Eudora",min_value=0.0,value=float(ma.get('meta_eudora',0)),key=f"me{s['id']}")
+                            mou = st.number_input("OUI",min_value=0.0,value=float(ma.get('meta_oui',0)),key=f"mo{s['id']}")
+                            mqd = st.number_input("QDB",min_value=0.0,value=float(ma.get('meta_qdb',0)),key=f"mq{s['id']}")
+                            mca = st.number_input("Cabelos R$",min_value=0.0,value=float(ma.get('meta_cabelos',0)),key=f"mc{s['id']}")
+                            mma = st.number_input("Make R$",min_value=0.0,value=float(ma.get('meta_make',0)),key=f"mm{s['id']}")
+                        with f2:
+                            st.caption("Indicadores %")
+                            mmu = st.number_input("Multimarcas%",0.0,100.0,float(ma.get('meta_multimarcas',0)),key=f"mmu{s['id']}")
+                            mpc = st.number_input("Cabelos%",0.0,100.0,float(ma.get('meta_pct_cabelos',0)),key=f"mpc{s['id']}")
+                            mpm = st.number_input("Make%",0.0,100.0,float(ma.get('meta_pct_make',0)),key=f"mpm{s['id']}")
+                            mat = st.number_input("Atividade%",0.0,100.0,float(ma.get('meta_atividade',0)),key=f"mat{s['id']}")
+                        with f3:
+                            st.caption("Base")
+                            mtb = st.number_input("Tamanho Base",0,value=int(ma.get('tamanho_base',0)),key=f"mtb{s['id']}")
+                        if st.button("💾 Salvar",key=f"sf{s['id']}"):
+                            upsert_meta(ca['id'],s['id'],{'meta_boticario':mbo,'meta_eudora':meu,'meta_oui':mou,'meta_qdb':mqd,
+                                'meta_cabelos':mca,'meta_make':mma,'meta_multimarcas':mmu,'meta_pct_cabelos':mpc,
+                                'meta_pct_make':mpm,'meta_atividade':mat,'tamanho_base':mtb,'updated_by':usuario})
+                            st.success("Salvo!")
 
     elif aba == "Upload":
         requer_perfil("admin")
