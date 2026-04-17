@@ -266,36 +266,41 @@ def semaforo_simples(pct, label, realizado_str, meta_str):
     </div>"""
 
 def linha_ranking(pos, nome, iaf, cl, delta=None, extra=None):
-    cor = cor_class(cl); em = emoji_class(cl)
-    pos_cor = ["#F9A825","#9E9E9E","#A1887F"]
-    pos_bg = pos_cor[pos-1] if pos <= 3 else "#f0f0f0"
+    cor = cor_class(cl)
+    em = emoji_class(cl)
+    pos_cores = ["#F9A825","#9E9E9E","#A1887F"]
+    pos_bg = pos_cores[pos-1] if pos <= 3 else "#f0f0f0"
     pos_txt = "white" if pos <= 3 else "#555"
-    delta_html = ""
-    if delta is not None:
-        sc = "#4CAF50" if delta >= 0 else "#F44336"
-        delta_html = f'<span style="font-size:11px;color:{sc}">{"▲" if delta>=0 else "▼"}{abs(delta):.1f}%</span>'
-    extra_html = f'<span style="font-size:11px;color:#999;margin-left:8px">{extra}</span>' if extra else ""
     barra = min(iaf, 100)
-    st.markdown(f"""<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;
-        background:white;border-radius:8px;border:1px solid #eee;margin-bottom:6px">
-        <div style="min-width:28px;height:28px;border-radius:50%;background:{pos_bg};
-            display:flex;align-items:center;justify-content:center;
-            font-weight:700;font-size:13px;color:{pos_txt}">{pos}</div>
-        <div style="flex:1">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-                <span style="font-weight:600;font-size:14px">{nome}</span>
-                <div style="display:flex;align-items:center;gap:8px">
-                    {delta_html}
-                    <span style="font-weight:700;font-size:16px;color:{cor}">{iaf:.1f}%</span>
-                    <span style="background:{cor};color:white;padding:2px 8px;border-radius:12px;font-size:11px">{em} {cl}</span>
-                    {extra_html}
-                </div>
-            </div>
-            <div style="background:#f0f0f0;border-radius:4px;height:6px;overflow:hidden">
-                <div style="background:{cor};width:{barra:.1f}%;height:100%;border-radius:4px"></div>
-            </div>
-        </div>
-    </div>""", unsafe_allow_html=True)
+    iaf_str = f"{iaf:.1f}%"
+    html = (
+        f'<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;'
+        f'background:white;border-radius:8px;border:1px solid #eee;margin-bottom:6px">'
+        f'<div style="min-width:28px;height:28px;border-radius:50%;background:{pos_bg};'
+        f'display:flex;align-items:center;justify-content:center;'
+        f'font-weight:700;font-size:13px;color:{pos_txt}">{pos}</div>'
+        f'<div style="flex:1">'
+        f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+        f'<span style="font-weight:600;font-size:14px">{nome}</span>'
+        f'<div style="display:flex;align-items:center;gap:8px">'
+    )
+    if delta is not None:
+        dc = "#4CAF50" if delta >= 0 else "#F44336"
+        ds = ("▲" if delta >= 0 else "▼") + f"{abs(delta):.1f}%"
+        html += f'<span style="font-size:11px;color:{dc}">{ds}</span>'
+    html += (
+        f'<span style="font-weight:700;font-size:16px;color:{cor}">{iaf_str}</span>'
+        f'<span style="background:{cor};color:white;padding:2px 8px;border-radius:12px;font-size:11px">{em} {cl}</span>'
+    )
+    if extra:
+        html += f'<span style="font-size:11px;color:#999">{extra}</span>'
+    html += (
+        f'</div></div>'
+        f'<div style="background:#f0f0f0;border-radius:4px;height:6px;overflow:hidden">'
+        f'<div style="background:{cor};width:{barra:.1f}%;height:100%;border-radius:4px"></div>'
+        f'</div></div></div>'
+    )
+    st.markdown(html, unsafe_allow_html=True)
 
 ARQS = ['Boticario','Cabelos','Eudora','Make','Oui','QDB','Ativos','ER']
 MARCAS_CFG = [('valor_boticario','meta_boticario','Boticário'),
@@ -1036,4 +1041,3 @@ else:
     elif pg == "💼 Financeiro": pg_financeiro()
     elif pg == "🏪 ER": pg_er()
     elif pg == "⚙️ Configurações": pg_config()
-
