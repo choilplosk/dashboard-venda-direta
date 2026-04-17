@@ -313,7 +313,10 @@ def pg_home():
     for i,a in enumerate(ARQS):
         with cols[i%4]: badge_arq(a, a in arqs_ok, arqs_data.get(a))
     falt = [a for a in ARQS if a not in arqs_ok]
-    st.warning(f"⚠️ Pendentes: {', '.join(falt)}") if falt else st.success("✅ Todos os arquivos carregados!")
+    if falt:
+        st.warning(f"⚠️ Pendentes: {', '.join(falt)}")
+    else:
+        st.success("✅ Todos os arquivos carregados!")
     st.markdown("---")
     res = get_resultados(ciclo['id'])
     if not res:
@@ -548,17 +551,18 @@ def pg_config():
     sb=get_supabase(); usuario=st.session_state.get('usuario','sistema')
     if aba=="Setores":
         st.markdown("### 🗂️ Setores")
-        with st.expander("➕ Novo setor"):
-            nn=st.text_input("Nome"); tn=st.selectbox("Tipo",["financeiro","base"])
-            if st.button("Adicionar"):
-                if nn: sb.table("setores").insert({"nome":nn,"tipo":tn,"ativo":True}).execute(); st.success("Adicionado!"); st.rerun()
-        for s in sb.table("setores").select("*").order("nome").execute().data or []:
-            c1,c2,c3,c4=st.columns([3,2,2,1])
-            c1.markdown(f"**{s['nome']}**")
-            with c2: ti=st.selectbox("Tipo",["financeiro","base"],index=0 if s['tipo']=='financeiro' else 1,key=f"t{s['id']}")
-            with c3: at=st.selectbox("Status",["Ativo","Inativo"],index=0 if s['ativo'] else 1,key=f"a{s['id']}")
-            with c4:
-                if st.button("💾",key=f"s{s['id']}"): sb.table("setores").update({"tipo":ti,"ativo":at=="Ativo"}).eq("id",s['id']).execute(); st.success("✓"); st.rerun()
+        st.info("Os setores são detectados automaticamente no upload das planilhas. Aqui você define o tipo e status de cada um.")
+        setores_db = sb.table("setores").select("*").order("nome").execute().data or []
+        if not setores_db:
+            st.warning("Nenhum setor encontrado. Faça o upload das planilhas primeiro em Configurações → Upload.")
+        else:
+            for s in setores_db:
+                c1,c2,c3,c4=st.columns([3,2,2,1])
+                c1.markdown(f"**{s['nome']}**")
+                with c2: ti=st.selectbox("Tipo",["financeiro","base"],index=0 if s['tipo']=='financeiro' else 1,key=f"t{s['id']}")
+                with c3: at=st.selectbox("Status",["Ativo","Inativo"],index=0 if s['ativo'] else 1,key=f"a{s['id']}")
+                with c4:
+                    if st.button("💾",key=f"s{s['id']}"): sb.table("setores").update({"tipo":ti,"ativo":at=="Ativo"}).eq("id",s['id']).execute(); st.success("✓"); st.rerun()
     elif aba=="Pontuação & IAF":
         st.markdown("### 🎯 Pontuação e IAF")
         c1,c2=st.columns(2)
@@ -647,7 +651,9 @@ def pg_config():
         requer_perfil("admin")
         st.markdown("### 📤 Upload de Planilhas")
         ca=get_ciclo_ativo()
-        if not ca: st.warning("Sem ciclo ativo."); return
+        if not ca:
+            st.warning("Sem ciclo ativo.")
+            return
         st.info(f"Ciclo: **{ca['nome']}**")
         uploaded={}; c1u,c2u=st.columns(2)
         for i,nm in enumerate(ARQS):
@@ -660,6 +666,19 @@ def pg_config():
                     dfs={}
                     for nm,arq in uploaded.items():
                         dfs[nm]=pd.read_excel(arq) if nm in ['ER','Ativos'] else ler_planilha(arq,nm)
+                    # Extrair e sincronizar setores automaticamente das planilhas
+                    setores_encontrados = set()
+                    for nm in ['Boticario','Cabelos','Eudora','Make','Oui','QDB','Ativos']:
+                        if nm in dfs and 'Setor' in dfs[nm].columns:
+                            for s in dfs[nm]['Setor'].dropna().unique():
+                                setores_encontrados.add(str(s).strip())
+                    # Inserir setores novos no banco (sem sobrescrever configurações existentes)
+                    setores_existentes = {s['nome'] for s in (sb.table("setores").select("nome").execute().data or [])}
+                    novos = setores_encontrados - setores_existentes
+                    for s in novos:
+                        sb.table("setores").insert({"nome":s,"tipo":"financeiro","ativo":True}).execute()
+                    if novos:
+                        st.info(f"ℹ️ {len(novos)} novos setores detectados e adicionados: {', '.join(sorted(novos))}")
                     cfg={r['chave']:r['valor'] for r in (sb.table("configuracoes").select("chave,valor").execute().data or [])}
                     res_p=processar_ciclo(dfs,get_metas(ca['id']),get_setores(),cfg)
                     for r in res_p['resultados']:
@@ -667,7 +686,7 @@ def pg_config():
                     for r in res_p['resultados_er']:
                         r['ciclo_id']=ca['id']; sb.table("resultados_er").upsert(r,on_conflict="ciclo_id,usuario_finalizacao").execute()
                     for nm in uploaded: log_upload(ca['id'],nm,usuario)
-                    st.success(f"✅ {len(uploaded)} arquivo(s) processados!")
+                    st.success(f"✅ {len(uploaded)} arquivo(s) processados! Vá em Configurações → Setores para classificar os novos setores.")
                 except Exception as e:
                     st.error(f"❌ Erro: {e}")
     elif aba=="Senhas":
@@ -723,3 +742,4 @@ else:
     elif pg=="💼 Financeiro": pg_financeiro()
     elif pg=="🏪 Coordenadora": pg_coordenadora()
     elif pg=="⚙️ Configurações": pg_config()
+
