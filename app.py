@@ -852,48 +852,41 @@ def pg_er():
     if df_er_raw is not None:
         col_a, col_b, col_c = st.columns(3)
 
+        total_rev = df_er_raw['Pessoa'].nunique()
+        total_ped = len(df_er_raw)
+
+        def tabela_mini(titulo, dados, col_label, col_pct):
+            st.markdown(f'<p style="font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">{titulo}</p>', unsafe_allow_html=True)
+            html = '<div style="background:white;border-radius:8px;border:1px solid #eee;overflow:hidden">'
+            for i, (_, row) in enumerate(dados.iterrows()):
+                bg = "#fafafa" if i % 2 == 0 else "white"
+                html += (
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                    f'padding:6px 12px;background:{bg}">'
+                    f'<span style="font-size:12px;color:#555">{row[col_label]}</span>'
+                    f'<span style="font-size:12px;font-weight:600;color:#333">{row[col_pct]:.1f}%</span>'
+                    f'</div>'
+                )
+            html += '</div>'
+            st.markdown(html, unsafe_allow_html=True)
+
         with col_a:
-            st.markdown("**📍 Revendedores por Bairro**")
-            total_rev = df_er_raw['Pessoa'].nunique()
             bairro_rev = df_er_raw.groupby('Bairro')['Pessoa'].nunique().reset_index()
             bairro_rev.columns = ['Bairro','Revendedores']
-            bairro_rev['%'] = (bairro_rev['Revendedores'] / total_rev * 100).round(1)
-            bairro_rev = bairro_rev.sort_values('Revendedores', ascending=False)
-            for _, row in bairro_rev.iterrows():
-                st.markdown(
-                    f'<div style="display:flex;justify-content:space-between;padding:5px 0;'
-                    f'border-bottom:1px solid #f0f0f0;font-size:13px">'
-                    f'<span style="color:#555">{row["Bairro"]}</span>'
-                    f'<span style="font-weight:600">{row["%"]:.1f}%</span>'
-                    f'</div>', unsafe_allow_html=True)
+            bairro_rev['%'] = bairro_rev['Revendedores'] / total_rev * 100
+            tabela_mini("📍 Por Bairro", bairro_rev.sort_values('Revendedores', ascending=False), 'Bairro', '%')
 
         with col_b:
-            st.markdown("**🏅 Revendedores por Segmentação**")
             seg_rev = df_er_raw.groupby('Papel')['Pessoa'].nunique().reset_index()
             seg_rev.columns = ['Segmentação','Revendedores']
-            seg_rev['%'] = (seg_rev['Revendedores'] / total_rev * 100).round(1)
-            seg_rev = seg_rev.sort_values('Revendedores', ascending=False)
-            for _, row in seg_rev.iterrows():
-                st.markdown(
-                    f'<div style="display:flex;justify-content:space-between;padding:5px 0;'
-                    f'border-bottom:1px solid #f0f0f0;font-size:13px">'
-                    f'<span style="color:#555">{row["Segmentação"]}</span>'
-                    f'<span style="font-weight:600">{row["%"]:.1f}%</span>'
-                    f'</div>', unsafe_allow_html=True)
+            seg_rev['%'] = seg_rev['Revendedores'] / total_rev * 100
+            tabela_mini("🏅 Por Segmentação", seg_rev.sort_values('Revendedores', ascending=False), 'Segmentação', '%')
 
         with col_c:
-            st.markdown("**💳 Forma de Pagamento**")
-            total_ped = len(df_er_raw)
             pag_cnt = df_er_raw['PlanoPagamento'].value_counts().reset_index()
             pag_cnt.columns = ['Forma','Pedidos']
-            pag_cnt['%'] = (pag_cnt['Pedidos'] / total_ped * 100).round(1)
-            for _, row in pag_cnt.iterrows():
-                st.markdown(
-                    f'<div style="display:flex;justify-content:space-between;padding:5px 0;'
-                    f'border-bottom:1px solid #f0f0f0;font-size:13px">'
-                    f'<span style="color:#555">{row["Forma"]}</span>'
-                    f'<span style="font-weight:600">{row["%"]:.1f}%</span>'
-                    f'</div>', unsafe_allow_html=True)
+            pag_cnt['%'] = pag_cnt['Pedidos'] / total_ped * 100
+            tabela_mini("💳 Forma de Pagamento", pag_cnt, 'Forma', '%')
 
         st.markdown("---")
 
