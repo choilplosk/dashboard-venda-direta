@@ -29,15 +29,19 @@ st.markdown("""<style>
     .stTabs [aria-selected="true"] { background: #1a2e4a !important; color: white !important; border-radius: 6px; }
     .stSelectbox label { font-size: 12px; color: #64748b; }
     .stExpander { background: white; border: 0.5px solid #e2e8f0 !important; border-radius: 8px !important; }
+    [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlock"] { background: white; }
+    .stTabs [data-baseweb="tab-panel"] { background: white !important; padding: 16px !important; border-radius: 0 0 10px 10px; border: 0.5px solid #e2e8f0; border-top: none; }
     h1,h2,h3,h4 { color: #1a2e4a !important; font-weight: 700 !important; }
     .stMarkdown hr { margin: 0.4rem 0; border-color: #e2e8f0; }
     .stAlert { border-radius: 8px !important; }
     p { font-size: 13px; }
     .stTabs [data-baseweb="tab"] { font-size: 12px; padding: 6px 16px; min-width: 80px; }
     .stTabs [data-baseweb="tab-panel"] { background: white; border-radius: 0 0 8px 8px; padding: 12px; }
-    .stRadio [data-testid="stHorizontalBlock"] { gap: 12px !important; }
-    .stRadio label { padding: 6px 14px !important; border-radius: 20px !important; border: 1px solid #e2e8f0 !important; font-size: 12px !important; }
-    .stRadio label[data-checked="true"] { background: #1a2e4a !important; color: white !important; border-color: #1a2e4a !important; }
+    .stRadio [data-testid="stHorizontalBlock"] { gap: 6px !important; }
+    section[data-testid="stSidebar"] .stRadio [data-testid="stHorizontalBlock"] { flex-direction: column !important; gap: 2px !important; }
+    section[data-testid="stSidebar"] .stRadio label { padding: 8px 12px !important; border-radius: 6px !important; border: none !important; font-size: 13px !important; width: 100% !important; }
+    section[data-testid="stSidebar"] .stRadio label:hover { background: #2d4a6e !important; color: white !important; }
+    section[data-testid="stSidebar"] .stRadio label[data-checked="true"] { background: #2d4a6e !important; color: white !important; border-left: 3px solid #F9A825 !important; }
     .stNumberInput input { font-size: 13px; }
     .stTextInput input { font-size: 13px; }
     [data-testid="stForm"] { background: white; border-radius: 10px; padding: 16px; border: 0.5px solid #e2e8f0; }
@@ -488,14 +492,14 @@ def pg_base(ciclo_id):
     # Buscar Base Atual e Base Meta PEF
     base_atual=int(get_config(f"base_atual_{cs['id']}",0) or 0)
     base_meta_pef=int(get_config(f"base_meta_pef_{cs['id']}",0) or 0)
-    gap=base_meta_pef-base_atual
+    gap=base_atual-base_meta_pef
     cor_gap="#16a34a" if gap>=0 else "#dc2626"
     # KPIs
     c1,c2,c3,c4=st.columns(4)
     with c1: card_kpi("Meta do Grupo",f"{t_real} / {t_meta}",f"{fmt_pct(pct_g)} atingido",cor_g)
     with c2: card_kpi("Bônus Grupo","✅ Conquistado" if grupo_batido else "❌ Não conquistado","+200 pts" if grupo_batido else f"Faltam {t_meta-t_real}","#16a34a" if grupo_batido else "#dc2626")
     with c3: card_kpi("Base Atual",fmt_int(base_atual),f"Meta PEF: {fmt_int(base_meta_pef)}","#1a2e4a")
-    with c4: card_kpi("Gap / Bônus",f"{'+' if gap>=0 else ''}{fmt_int(gap)}","positivo = bônus" if gap>=0 else "negativo = gap",cor_gap)
+    with c4: card_kpi("Gap / Bônus",f"{'+' if gap>=0 else ''}{fmt_int(gap)}","base atual - meta PEF",cor_gap)
     st.markdown("")
     # Ranking
     st.markdown("#### 🏆 Ranking Individual")
@@ -726,25 +730,24 @@ def pg_er(ciclo_id):
     df=pd.DataFrame(res)
     tp=int(df['total_pedidos'].sum()); tnm=int(df['pedidos_nao_multimarca'].sum())
     df_er_raw=st.session_state.get('df_er_raw',None)
-    # Calcular KPIs do ER
+    df_multi_raw=st.session_state.get('df_multi_raw',None)
+    df_make_raw=st.session_state.get('df_make_raw',None)
+    df_cab_raw=st.session_state.get('df_cab_raw',None)
     rev_er=0; rev_multi_er=0; rev_make_er=0; rev_cab_er=0
     total_ativos_global=int(get_config(f"ativos_unicos_{cs['id']}",0) or 0)
+    rev_er_set=set()
     if df_er_raw is not None:
         rev_er=df_er_raw['Pessoa'].nunique()
-        # Multimarcas no ER
-        multi_set=set()
-        if 'df_multi_raw' in st.session_state:
-            df_m=st.session_state['df_multi_raw']
-            multi_set=set(df_m[df_m['is_multimarca']]['CodigoRevendedora'].unique())
         rev_er_set=set(df_er_raw['Pessoa'].unique())
+    if df_multi_raw is not None and rev_er_set:
+        multi_set=set(df_multi_raw[df_multi_raw['is_multimarca']]['CodigoRevendedora'].unique())
         rev_multi_er=len(rev_er_set&multi_set)
-        # Make e Cabelos no ER
-        if 'df_make_raw' in st.session_state:
-            make_set=set(st.session_state['df_make_raw']['CodigoRevendedora'].unique())
-            rev_make_er=len(rev_er_set&make_set)
-        if 'df_cab_raw' in st.session_state:
-            cab_set=set(st.session_state['df_cab_raw']['CodigoRevendedora'].unique())
-            rev_cab_er=len(rev_er_set&cab_set)
+    if df_make_raw is not None and rev_er_set:
+        make_set=set(df_make_raw['CodigoRevendedora'].unique())
+        rev_make_er=len(rev_er_set&make_set)
+    if df_cab_raw is not None and rev_er_set:
+        cab_set=set(df_cab_raw['CodigoRevendedora'].unique())
+        rev_cab_er=len(rev_er_set&cab_set)
     pct_make_er=rev_make_er/total_ativos_global*100 if total_ativos_global>0 else 0
     pct_cab_er=rev_cab_er/total_ativos_global*100 if total_ativos_global>0 else 0
     # KPIs
@@ -780,8 +783,8 @@ def pg_er(ciclo_id):
             st.markdown(html,unsafe_allow_html=True)
     with tab_multi: ranking_caixa(df,'pct_multimarca','Multimarca')
     with tab_cab_r:
-        if df_er_raw is not None and 'df_cab_raw' in st.session_state:
-            cab_set=set(st.session_state['df_cab_raw']['CodigoRevendedora'].unique())
+        if df_er_raw is not None and df_cab_raw is not None:
+            cab_set=set(df_cab_raw['CodigoRevendedora'].unique())
             df_er_c=df_er_raw.copy(); df_er_c['is_cab']=df_er_c['Pessoa'].isin(cab_set)
             cab_rank=df_er_c.groupby('Usuario de Finalização').agg(total=('Pessoa','count'),cab=('is_cab','sum')).reset_index()
             cab_rank['pct_cab']=cab_rank['cab']/cab_rank['total']*100
@@ -794,9 +797,10 @@ def pg_er(ciclo_id):
                 st.markdown(f'<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:white;border-radius:8px;border:1px solid #e2e8f0;margin-bottom:4px"><div style="min-width:26px;height:26px;border-radius:50%;background:{pos_bg};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:{pos_txt}">{pos_num}</div><span style="flex:1;font-size:13px;font-weight:600;color:#1e293b">{row["Usuario de Finalização"]}</span><span style="font-size:12px;color:#94a3b8">{int(row["cab"])} pedidos</span><span style="font-size:15px;font-weight:700;color:{cor}">{ic} {fmt_pct(v)}</span></div>',unsafe_allow_html=True)
         else: st.info("Reprocesse os dados para ver este ranking.")
     with tab_make_r:
-        if df_er_raw is not None and 'df_make_raw' in st.session_state:
-            make_set=set(st.session_state['df_make_raw']['CodigoRevendedora'].unique())
+        if df_er_raw is not None and df_make_raw is not None:
+            make_set=set(df_make_raw['CodigoRevendedora'].unique())
             df_er_m=df_er_raw.copy(); df_er_m['is_make']=df_er_m['Pessoa'].isin(make_set)
+
             make_rank=df_er_m.groupby('Usuario de Finalização').agg(total=('Pessoa','count'),mak=('is_make','sum')).reset_index()
             make_rank['pct_make']=make_rank['mak']/make_rank['total']*100
             for pos,row in make_rank.sort_values('pct_make',ascending=False).reset_index(drop=True).iterrows():
@@ -812,18 +816,33 @@ def pg_er(ciclo_id):
         total_rev=df_er_raw['Pessoa'].nunique()
         col_a,col_b=st.columns(2)
         with col_a:
-            bairro_rev=df_er_raw.groupby('Bairro')['Pessoa'].nunique().reset_index()
+            df_er_bairro=df_er_raw.copy(); df_er_bairro['Bairro']=df_er_bairro['Bairro'].str.upper().str.strip()
+            bairro_rev=df_er_bairro.groupby('Bairro')['Pessoa'].nunique().reset_index()
             bairro_rev.columns=['Bairro','Revendedores']; bairro_rev['%']=bairro_rev['Revendedores']/total_rev*100
             tabela_mini("📍 Por Bairro",bairro_rev.sort_values('Revendedores',ascending=False),'Bairro','%')
         with col_b:
             seg_rev=df_er_raw.groupby('Papel')['Pessoa'].nunique().reset_index()
-            seg_rev.columns=['Segmentação','Revendedores']; seg_rev['%']=seg_rev['Revendedores']/total_rev*100
-            # Ticket médio por segmentação
+            seg_rev.columns=['Segmentação','RVs']; seg_rev['%']=seg_rev['RVs']/total_rev*100
             ticket=df_er_raw.groupby('Papel').agg(receita=('ValorPraticado','sum'),revs=('Pessoa','nunique')).reset_index()
-            ticket['Ticket']=ticket['receita']/ticket['revs']
-            ticket_map={row['Papel']:f"R${row['Ticket']:,.0f}".replace(",",".") for _,row in ticket.iterrows()}
+            ticket['ticket_med']=ticket['receita']/ticket['revs']
+            ticket_map={row['Papel']:row['ticket_med'] for _,row in ticket.iterrows()}
             seg_rev['Ticket']=seg_rev['Segmentação'].map(ticket_map)
-            tabela_mini("🏅 Por Segmentação",seg_rev.sort_values('Revendedores',ascending=False),'Segmentação','%','Ticket')
+            seg_rev=seg_rev.sort_values('RVs',ascending=False)
+            # Tabela customizada com RV + % + ticket
+            st.markdown('<p style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px">🏅 Por Segmentação</p>',unsafe_allow_html=True)
+            html_seg='<div style="background:white;border-radius:8px;overflow:hidden;border:0.5px solid #e2e8f0">'
+            html_seg+='<div style="display:flex;justify-content:space-between;padding:4px 10px;background:#f8fafc;border-bottom:0.5px solid #e2e8f0"><span style="font-size:10px;color:#94a3b8;font-weight:600">SEGMENTAÇÃO</span><span style="font-size:10px;color:#94a3b8;font-weight:600">RVs · % · TICKET MÉD.</span></div>'
+            for _,row in seg_rev.iterrows():
+                ticket_str=f"R$ {row['Ticket']:,.0f}".replace(",",".") if row['Ticket']>0 else "—"
+                html_seg+=(f'<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 10px;border-bottom:0.5px solid #f8fafc">'
+                    f'<span style="font-size:11px;color:#475569">{row["Segmentação"]}</span>'
+                    f'<div style="display:flex;align-items:center;gap:8px">'
+                    f'<span style="font-size:11px;color:#64748b">{int(row["RVs"])}</span>'
+                    f'<span style="font-size:11px;font-weight:600;color:#1a2e4a">{row["%"]:.1f}%</span>'
+                    f'<span style="font-size:10px;color:#94a3b8">{ticket_str}</span>'
+                    f'</div></div>')
+            html_seg+='</div>'
+            st.markdown(html_seg,unsafe_allow_html=True)
         st.markdown("")
         # Gráfico frequência por dia
         st.markdown("#### 📅 Frequência por Dia")
@@ -1101,7 +1120,6 @@ else:
             sel_nome=st.selectbox("Ciclo",nomes_ciclos,index=idx_ativo)
             ciclo_sel=next((c for c in ciclos if c['nome']==sel_nome),ciclo_ativo)
             st.session_state.ciclo_sel_id=ciclo_sel['id'] if ciclo_sel else None
-        st.markdown("<hr style='border-color:#2d4a6e;margin:8px 0'>", unsafe_allow_html=True)
         pg=st.radio("",["🏠 Home","👥 Base","💼 Financeiro","🏪 ER","⚙️ Configurações"])
         st.markdown("<hr style='border-color:#2d4a6e;margin:8px 0'>", unsafe_allow_html=True)
         if st.button("Sair",use_container_width=True):
