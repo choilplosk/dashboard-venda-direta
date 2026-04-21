@@ -1064,11 +1064,11 @@ def pg_config():
                                 rev_multi_er=len(er_set&multi_set)
                             if 'Make' in dfs:
                                 make_set=set(int(x) for x in dfs['Make']['CodigoRevendedora'].dropna().unique())
-                                make_er_list=list(er_set&make_set)
+                                make_er_list=[int(x) for x in (er_set&make_set)]
                                 rev_make_er=len(make_er_list)
                             if 'Cabelos' in dfs:
                                 cab_set=set(int(x) for x in dfs['Cabelos']['CodigoRevendedora'].dropna().unique())
-                                cab_er_list=list(er_set&cab_set)
+                                cab_er_list=[int(x) for x in (er_set&cab_set)]
                                 rev_cab_er=len(cab_er_list)
                             def _upsert_cfg(chave, valor):
                                 ex=sb.table("configuracoes").select("id").eq("chave",chave).execute()
