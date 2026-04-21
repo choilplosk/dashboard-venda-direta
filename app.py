@@ -1050,38 +1050,38 @@ def pg_config():
                     if 'Ativos' in dfs:
                         df_multi=calc_multimarcas(dfs['Ativos'],dfs)
                         st.session_state['df_multi_raw']=df_multi
-                        # Calcular métricas ER persistentes
+                    # Calcular e salvar métricas ER — fora do bloco Ativos para garantir execução
+                    try:
+                        import json as _json
                         if 'ER' in dfs:
-                            er_set=set(dfs['ER']['Pessoa'].unique())
-                            multi_set=set(df_multi[df_multi['is_multimarca']]['CodigoRevendedora'].unique())
-                            rev_multi_er=len(er_set&multi_set)
+                            er_set=set(int(x) for x in dfs['ER']['Pessoa'].dropna().unique())
                             rev_er_total=len(er_set)
-                            rev_make_er=0; rev_cab_er=0
+                            rev_multi_er=0; rev_make_er=0; rev_cab_er=0
+                            cab_er_list=[]; make_er_list=[]
+                            if 'Ativos' in dfs:
+                                df_multi2=calc_multimarcas(dfs['Ativos'],dfs)
+                                multi_set=set(int(x) for x in df_multi2[df_multi2['is_multimarca']]['CodigoRevendedora'].dropna().unique())
+                                rev_multi_er=len(er_set&multi_set)
                             if 'Make' in dfs:
-                                rev_make_er=len(er_set&set(dfs['Make']['CodigoRevendedora'].unique()))
+                                make_set=set(int(x) for x in dfs['Make']['CodigoRevendedora'].dropna().unique())
+                                make_er_list=list(er_set&make_set)
+                                rev_make_er=len(make_er_list)
                             if 'Cabelos' in dfs:
-                                rev_cab_er=len(er_set&set(dfs['Cabelos']['CodigoRevendedora'].unique()))
-                            # Salvar no Supabase
-                            for chave_er,val_er in [
-                                (f"er_rev_total_{ca['id']}", rev_er_total),
-                                (f"er_rev_multi_{ca['id']}", rev_multi_er),
-                                (f"er_rev_make_{ca['id']}", rev_make_er),
-                                (f"er_rev_cab_{ca['id']}", rev_cab_er),
-                            ]:
-                                ex_er=sb.table("configuracoes").select("id").eq("chave",chave_er).execute()
-                                if ex_er.data: sb.table("configuracoes").update({"valor":str(val_er),"updated_by":usuario}).eq("chave",chave_er).execute()
-                                else: sb.table("configuracoes").insert({"chave":chave_er,"valor":str(val_er),"updated_by":usuario}).execute()
-                            # Salvar listas de códigos para rankings de cabelos e make no ER
-                            import json
-                            cab_er_list=list(er_set&set(dfs['Cabelos']['CodigoRevendedora'].unique())) if 'Cabelos' in dfs else []
-                            make_er_list=list(er_set&set(dfs['Make']['CodigoRevendedora'].unique())) if 'Make' in dfs else []
-                            for chave_list,val_list in [
-                                (f"er_cab_list_{ca['id']}", json.dumps(cab_er_list)),
-                                (f"er_make_list_{ca['id']}", json.dumps(make_er_list)),
-                            ]:
-                                ex_l=sb.table("configuracoes").select("id").eq("chave",chave_list).execute()
-                                if ex_l.data: sb.table("configuracoes").update({"valor":val_list,"updated_by":usuario}).eq("chave",chave_list).execute()
-                                else: sb.table("configuracoes").insert({"chave":chave_list,"valor":val_list,"updated_by":usuario}).execute()
+                                cab_set=set(int(x) for x in dfs['Cabelos']['CodigoRevendedora'].dropna().unique())
+                                cab_er_list=list(er_set&cab_set)
+                                rev_cab_er=len(cab_er_list)
+                            def _upsert_cfg(chave, valor):
+                                ex=sb.table("configuracoes").select("id").eq("chave",chave).execute()
+                                if ex.data: sb.table("configuracoes").update({"valor":str(valor),"updated_by":usuario}).eq("chave",chave).execute()
+                                else: sb.table("configuracoes").insert({"chave":chave,"valor":str(valor),"updated_by":usuario}).execute()
+                            _upsert_cfg(f"er_rev_total_{ca['id']}", rev_er_total)
+                            _upsert_cfg(f"er_rev_multi_{ca['id']}", rev_multi_er)
+                            _upsert_cfg(f"er_rev_make_{ca['id']}", rev_make_er)
+                            _upsert_cfg(f"er_rev_cab_{ca['id']}", rev_cab_er)
+                            _upsert_cfg(f"er_cab_list_{ca['id']}", _json.dumps(cab_er_list))
+                            _upsert_cfg(f"er_make_list_{ca['id']}", _json.dumps(make_er_list))
+                    except Exception as e_er:
+                        st.warning(f"⚠️ Métricas ER não salvas: {e_er}")
                     for nm in uploaded: log_upload(ca['id'],nm,usuario)
                     st.success(f"✅ {len(uploaded)} arquivo(s) processados com sucesso!")
                 except Exception as e:
