@@ -3,29 +3,29 @@ from supabase import create_client, Client
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
- 
+
 st.set_page_config(page_title="Dashboard Venda Direta", page_icon="💼", layout="wide")
- 
+
 st.markdown("""<style>
     .block-container { padding-top: 1.5rem; }
     div[data-testid="metric-container"] { background: white; border-radius:10px; padding:12px; border:1px solid #eee; }
     .stRadio > div { gap: 0.5rem; }
 </style>""", unsafe_allow_html=True)
- 
+
 SUPABASE_URL = st.secrets.get("SUPABASE_URL", "https://bddjuowbotsybamawsts.supabase.co")
 SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkZGp1b3dib3RzeWJhbWF3c3RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNzE3MjAsImV4cCI6MjA5MTk0NzcyMH0.QHDO0Ebfbx4rcV327g1KXD4Ep-jRstQXil_B6L445VU")
- 
+
 @st.cache_resource
 def get_supabase():
     return create_client(SUPABASE_URL, SUPABASE_KEY)
- 
+
 def get_config(chave, default=None):
     try:
         res = get_supabase().table("configuracoes").select("valor").eq("chave", chave).single().execute()
         return res.data["valor"] if res.data else default
     except:
         return default
- 
+
 def set_config(chave, valor, usuario):
     sb = get_supabase()
     old = get_config(chave)
@@ -39,62 +39,62 @@ def set_config(chave, valor, usuario):
             "valor_anterior": str(old), "valor_novo": str(valor), "usuario": usuario}).execute()
     except:
         pass
- 
+
 def get_ciclos():
     return get_supabase().table("ciclos").select("*").order("id", desc=True).execute().data or []
- 
+
 def get_ciclo_ativo():
     res = get_supabase().table("ciclos").select("*").eq("ativo", True).order("id", desc=True).limit(1).execute()
     return res.data[0] if res.data else None
- 
+
 def get_setores(apenas_ativos=True, tipo=None):
     q = get_supabase().table("setores").select("*")
     if apenas_ativos: q = q.eq("ativo", True)
     if tipo: q = q.eq("tipo", tipo)
     return q.order("nome").execute().data or []
- 
+
 def get_metas(ciclo_id, setor_id=None):
     q = get_supabase().table("metas").select("*").eq("ciclo_id", ciclo_id)
     if setor_id: q = q.eq("setor_id", setor_id)
     return q.execute().data or []
- 
+
 def get_resultados(ciclo_id, tipo=None):
     q = get_supabase().table("resultados").select("*").eq("ciclo_id", ciclo_id)
     if tipo: q = q.eq("tipo", tipo)
     return q.execute().data or []
- 
+
 def get_resultados_er(ciclo_id):
     return get_supabase().table("resultados_er").select("*").eq("ciclo_id", ciclo_id).order("pct_nao_multimarca", desc=True).execute().data or []
- 
+
 def get_logs_upload(ciclo_id):
     return get_supabase().table("log_uploads").select("*").eq("ciclo_id", ciclo_id).order("data_upload", desc=True).execute().data or []
- 
+
 def log_upload(ciclo_id, arquivo, usuario):
     get_supabase().table("log_uploads").insert({"ciclo_id": ciclo_id, "arquivo": arquivo, "usuario": usuario}).execute()
- 
+
 def upsert_meta(ciclo_id, setor_id, dados):
     dados['ciclo_id'] = ciclo_id
     dados['setor_id'] = setor_id
     get_supabase().table("metas").upsert(dados, on_conflict="ciclo_id,setor_id").execute()
- 
+
 # Formatação numérica BR
 def fmt_br(valor, decimais=2):
     if isinstance(valor, float) or isinstance(valor, int):
         return f"{valor:_.{decimais}f}".replace("_", "X").replace(".", ",").replace("X", ".")
     return str(valor)
- 
+
 def fmt_moeda(valor):
     return f"R$ {fmt_br(valor)}"
- 
+
 def fmt_pct(valor, decimais=1):
     return f"{valor:.{decimais}f}%".replace(".", ",")
- 
+
 PERFIS = {"leitura": 1, "gerencia": 2, "admin": 3}
- 
+
 def check_auth():
     if "perfil" not in st.session_state: st.session_state.perfil = None
     if "usuario" not in st.session_state: st.session_state.usuario = None
- 
+
 def login_screen():
     st.markdown("## 🔐 Dashboard Venda Direta")
     st.markdown("---")
@@ -113,24 +113,24 @@ def login_screen():
                 st.session_state.perfil = "leitura"; st.session_state.usuario = nome; st.rerun()
             else:
                 st.error("Senha incorreta.")
- 
+
 def requer_perfil(p):
     if PERFIS.get(st.session_state.get("perfil"), 0) < PERFIS.get(p, 99):
         st.warning("⛔ Sem permissão."); st.stop()
- 
+
 def cor_class(c):
     return {'Diamante':'#1565C0','Ouro':'#F9A825','Prata':'#607D8B','Bronze':'#A1887F'}.get(c,'#9E9E9E')
- 
+
 def emoji_class(c):
     return {'Diamante':'💎','Ouro':'🥇','Prata':'🥈','Bronze':'🥉'}.get(c,'—')
- 
+
 def class_iaf(iaf, cfg):
     if iaf >= float(cfg.get('faixa_diamante_min',95)): return 'Diamante'
     if iaf >= float(cfg.get('faixa_ouro_min',85)): return 'Ouro'
     if iaf >= float(cfg.get('faixa_prata_min',75)): return 'Prata'
     if iaf >= float(cfg.get('faixa_bronze_min',65)): return 'Bronze'
     return 'Não Classificado'
- 
+
 def calc_pts(realizado, meta, pts_max, f50, f75, f100):
     if meta <= 0: return 0.0
     p = realizado / meta * 100
@@ -138,12 +138,12 @@ def calc_pts(realizado, meta, pts_max, f50, f75, f100):
     if p >= f75: return pts_max * 0.75
     if p >= f50: return pts_max * 0.50
     return 0.0
- 
+
 def ler_planilha(arquivo, marca):
     df = pd.read_excel(arquivo)
     df['Marca'] = marca
     return df[~df['ValorPraticado'].isin([0,6])] if marca == 'Oui' else df[df['ValorPraticado'] > 0]
- 
+
 def calc_multimarcas(df_ativos, dfs):
     at = df_ativos[df_ativos['ValorPraticado'] > 0].copy()
     cods = set(at['CodigoRevendedora'].unique())
@@ -155,7 +155,7 @@ def calc_multimarcas(df_ativos, dfs):
     multi = {c for c,n in cnt.items() if n >= 2}
     at['is_multimarca'] = at['CodigoRevendedora'].isin(multi)
     return at
- 
+
 def processar_ciclo(dfs, metas_list, setores_list, cfg):
     df_ativos = dfs.get('Ativos')
     f50,f75,f100 = float(cfg.get('faixa_pontuacao_50pct',85)), float(cfg.get('faixa_pontuacao_75pct',95)), float(cfg.get('faixa_pontuacao_100pct',100))
@@ -244,8 +244,13 @@ def processar_ciclo(dfs, metas_list, setores_list, cfg):
             er_res.append({'usuario_finalizacao':u,'total_pedidos':tot,'pedidos_nao_multimarca':nm,
                            'pct_nao_multimarca':round(nm/tot*100 if tot>0 else 0,2)})
         er_res.sort(key=lambda x: x['pct_nao_multimarca'], reverse=True)
-    return {'resultados':resultados,'resultados_er':er_res,'t_real':t_real,'t_meta':t_meta}
- 
+    # Ativos únicos globais — contar CodigoRevendedora único em toda a tabela Ativos
+    ativos_unicos_global = 0
+    if df_ativos is not None:
+        ativos_unicos_global = int(df_ativos[df_ativos['ValorPraticado'] > 0]['CodigoRevendedora'].nunique())
+    return {'resultados':resultados,'resultados_er':er_res,'t_real':t_real,'t_meta':t_meta,
+            'ativos_unicos_global':ativos_unicos_global}
+
 # =============================================
 # COMPONENTES VISUAIS
 # =============================================
@@ -258,7 +263,7 @@ def kpi_grande(label, valor, subtexto=None, cor="#1565C0"):
         f'{sub}</div>'
     )
     st.markdown(html, unsafe_allow_html=True)
- 
+
 def semaforo_simples(pct, label, realizado_str, meta_str):
     cor = "#9E9E9E" if pct==0 else ("#4CAF50" if pct>=100 else ("#FFC107" if pct>=95 else "#F44336"))
     ic = "⚪" if pct==0 else ("🟢" if pct>=100 else ("🟡" if pct>=95 else "🔴"))
@@ -273,7 +278,7 @@ def semaforo_simples(pct, label, realizado_str, meta_str):
         f'<br><span style="font-size:11px;color:{cor};font-weight:600">{pct_str} da meta</span>'
         f'</div></div>'
     )
- 
+
 def linha_ranking(pos, nome, iaf, cl, delta=None, extra=None):
     cor = cor_class(cl)
     em = emoji_class(cl)
@@ -310,7 +315,7 @@ def linha_ranking(pos, nome, iaf, cl, delta=None, extra=None):
         f'</div></div></div>'
     )
     st.markdown(html, unsafe_allow_html=True)
- 
+
 ARQS = ['Boticario','Cabelos','Eudora','Make','Oui','QDB','Ativos','ER']
 MARCAS_CFG = [('valor_boticario','meta_boticario','Boticário'),
               ('valor_eudora','meta_eudora','Eudora'),
@@ -322,7 +327,7 @@ INDS_PCT = [('pct_multimarcas','meta_multimarcas','Multimarcas'),
             ('pct_cabelos','meta_pct_cabelos','Cabelos %'),
             ('pct_make','meta_pct_make','Make %'),
             ('pct_atividade','meta_atividade','Atividade')]
- 
+
 # =============================================
 # PÁGINA HOME
 # =============================================
@@ -335,38 +340,40 @@ def pg_home():
         st.warning("⚠️ Nenhum ciclo ativo. Configure em Configurações → Ciclos & Metas.")
         return
     st.markdown("---")
- 
+
     res = get_resultados(ciclo['id'])
     if not res:
         st.info("📊 Aguardando processamento dos dados do ciclo.")
         _status_arquivos(ciclo)
         return
- 
+
     df = pd.DataFrame(res)
     mc = ['valor_boticario','valor_eudora','valor_oui','valor_qdb','valor_cabelos','valor_make']
     fin = df[df['tipo']=='financeiro']
     base = df[df['tipo']=='base']
     receita_total = df[mc].sum().sum()
-    total_ativos = int(fin['ativos'].sum())
- 
-    # Atividade global = soma ativos / soma tamanho_base de todos os setores financeiros ativos
+    # Ativos únicos globais — vem da sessão após upload
+    ativos_unicos_global = st.session_state.get('ativos_unicos_global', None)
+    total_ativos = ativos_unicos_global if ativos_unicos_global is not None else int(fin['ativos'].sum())
+
+    # Atividade global = ativos únicos / soma tamanho_base de todos os setores financeiros ativos
     setores_fin_home = get_setores(tipo='financeiro')
     ids_fin_home = {s['id'] for s in setores_fin_home}
     metas_home = {m['setor_id']:m for m in get_metas(ciclo['id'])}
     total_base_home = sum(int(metas_home.get(sid,{}).get('tamanho_base',0)) for sid in ids_fin_home)
     pct_ativ_global = total_ativos / total_base_home * 100 if total_base_home > 0 else 0
- 
+
     pct_multi = fin['pct_multimarcas'].mean() if len(fin) > 0 else 0
- 
+
     # KPIs grandes
     c1,c2,c3,c4 = st.columns(4)
     with c1: kpi_grande("Receita Total", fmt_moeda(receita_total))
     with c2: kpi_grande("Revendedores Ativos", f"{total_ativos:,}".replace(",","."))
     with c3: kpi_grande("Atividade Global", fmt_pct(pct_ativ_global), cor="#4CAF50" if pct_ativ_global>=80 else "#F44336")
     with c4: kpi_grande("Multimarcas Média", fmt_pct(pct_multi), cor="#4CAF50" if pct_multi>=50 else "#F44336")
- 
+
     st.markdown("---")
- 
+
     # IAF por grupo
     col_b, col_f = st.columns(2)
     iaf_base = base['iaf'].mean() if len(base) > 0 else 0
@@ -377,9 +384,9 @@ def pg_home():
     with col_f:
         cor = "#4CAF50" if iaf_fin>=95 else ("#FFC107" if iaf_fin>=85 else "#F44336")
         kpi_grande("IAF Médio — Financeiro", fmt_pct(iaf_fin), cor=cor)
- 
+
     st.markdown("---")
- 
+
     # Pódio top 3
     st.markdown("### 🏆 Pódio do Ciclo")
     sb = get_supabase()
@@ -400,9 +407,9 @@ def pg_home():
                 <div style="font-size:24px;font-weight:700;color:{cor}">{fmt_pct(r['iaf'])}</div>
                 <div style="font-size:12px;color:#999">{emoji_class(r['classificacao'])} {r['classificacao']}</div>
             </div>""", unsafe_allow_html=True)
- 
+
     st.markdown("---")
- 
+
     # Tabela de classificações
     st.markdown("### 🏅 Classificações")
     # Filtrar apenas setores ativos
@@ -414,7 +421,7 @@ def pg_home():
         nomes_map = {}
         ids_ativos_home = set()
     todos_res = df[df['setor_id'].isin(ids_ativos_home)].sort_values('iaf', ascending=False)
- 
+
     for _, r in todos_res.iterrows():
         nm = nomes_map.get(r['setor_id'], str(r['setor_id']))
         cor = cor_class(r['classificacao'])
@@ -430,10 +437,10 @@ def pg_home():
                 <span style="background:{cor};color:white;padding:3px 10px;border-radius:12px;font-size:12px">{em} {r['classificacao']}</span>
             </div>
         </div>""", unsafe_allow_html=True)
- 
+
     st.markdown("---")
     _status_arquivos(ciclo)
- 
+
 def _status_arquivos(ciclo):
     st.markdown("### 📁 Status dos Arquivos")
     logs = get_logs_upload(ciclo['id'])
@@ -455,7 +462,7 @@ def _status_arquivos(ciclo):
         st.warning(f"⚠️ Pendentes: {', '.join(falt)}")
     else:
         st.success("✅ Todos os arquivos carregados!")
- 
+
 # =============================================
 # PÁGINA BASE
 # =============================================
@@ -464,14 +471,14 @@ def pg_base():
     st.markdown("---")
     ciclo = get_ciclo_ativo()
     if not ciclo: st.warning("⚠️ Sem ciclo ativo."); return
- 
+
     ciclos = get_ciclos(); nomes = [c['nome'] for c in ciclos]
     sel = st.selectbox("Ciclo", nomes, index=nomes.index(ciclo['nome']) if ciclo['nome'] in nomes else 0)
     cs = next((c for c in ciclos if c['nome']==sel), ciclo)
- 
+
     sb_list = get_setores(tipo='base')
     if not sb_list: st.info("Nenhum setor Base configurado."); return
- 
+
     res_all = get_resultados(cs['id'], tipo='base')
     metas = {m['setor_id']:m for m in get_metas(cs['id'])}
     # Filtrar apenas setores ativos
@@ -479,10 +486,10 @@ def pg_base():
     res = [r for r in res_all if r['setor_id'] in ids_ativos]
     res_d = {r['setor_id']:r for r in res}
     sid_nm = {s['id']:s['nome'] for s in sb_list}
- 
+
     t_meta = sum(int(metas.get(s['id'],{}).get('meta_inicios_reinicios',0)) for s in sb_list)
     t_real = sum(int(metas.get(s['id'],{}).get('realizado_inicios_reinicios',0)) for s in sb_list)
- 
+
     # KPIs do grupo
     c1,c2,c3 = st.columns(3)
     pct_g = t_real/t_meta*100 if t_meta > 0 else 0
@@ -494,14 +501,14 @@ def pg_base():
                          cor="#4CAF50" if grupo_batido else "#F44336")
     iaf_medio = sum(r['iaf'] for r in res)/len(res) if res else 0
     with c3: kpi_grande("IAF Médio do Grupo", fmt_pct(iaf_medio), cor=cor_class(class_iaf(iaf_medio,{})))
- 
+
     st.markdown("---")
- 
+
     # Ranking
     st.markdown("### 🏆 Ranking Individual")
     c_ant = next((c for c in ciclos if c['id']<cs['id']),None)
     r_ant = {r['setor_id']:r for r in get_resultados(c_ant['id'],tipo='base')} if c_ant else {}
- 
+
     res_sorted = sorted(res, key=lambda x: x['iaf'], reverse=True)
     for pos, r in enumerate(res_sorted, 1):
         sid = r['setor_id']
@@ -513,9 +520,9 @@ def pg_base():
         delta = round(r['iaf']-r_ant[sid]['iaf'],1) if sid in r_ant else None
         extra = f"I+R: {real_ir}/{meta_ir} | Contrib: {fmt_pct(contrib)}"
         linha_ranking(pos, nome, r['iaf'], r['classificacao'], delta, extra)
- 
+
     st.markdown("---")
- 
+
     # Gráfico contribuição para meta grupo
     st.markdown("### 📊 Contribuição para Meta do Grupo")
     if res and t_meta > 0:
@@ -525,7 +532,7 @@ def pg_base():
             meta = metas.get(sid,{})
             real_ir = int(meta.get('realizado_inicios_reinicios',0))
             dados_contrib.append({'Supervisora': sid_nm.get(sid,str(sid)), 'Contribuição': real_ir/t_meta*100, 'Realizado': real_ir})
- 
+
         fig = go.Figure()
         cores_contrib = [cor_class(r['classificacao']) for r in res_sorted]
         for i, d in enumerate(dados_contrib):
@@ -540,7 +547,7 @@ def pg_base():
                          xaxis_title="% da Meta do Grupo", xaxis_ticksuffix="%",
                          legend=dict(orientation="h", yanchor="bottom", y=1.1, xanchor="left", x=0))
         st.plotly_chart(fig, use_container_width=True)
- 
+
     # Evolução IAF
     st.markdown("### 📈 Evolução do IAF")
     evol = []
@@ -555,7 +562,7 @@ def pg_base():
             fig2.add_hline(y=v,line_dash="dot",line_color=cor_class(l if l!="Bronze" else "Bronze"),
                           annotation_text=l,annotation_position="right")
         st.plotly_chart(fig2,use_container_width=True)
- 
+
 # =============================================
 # PÁGINA FINANCEIRO
 # =============================================
@@ -564,14 +571,14 @@ def pg_financeiro():
     st.markdown("---")
     ciclo = get_ciclo_ativo()
     if not ciclo: st.warning("⚠️ Sem ciclo ativo."); return
- 
+
     ciclos = get_ciclos(); nomes = [c['nome'] for c in ciclos]
     sel = st.selectbox("Ciclo", nomes, index=nomes.index(ciclo['nome']) if ciclo['nome'] in nomes else 0)
     cs = next((c for c in ciclos if c['nome']==sel), ciclo)
- 
+
     sf_list = get_setores(tipo='financeiro')
     if not sf_list: st.info("Nenhum setor Financeiro configurado."); return
- 
+
     res_all = get_resultados(cs['id'],tipo='financeiro')
     metas = {m['setor_id']:m for m in get_metas(cs['id'])}
     # Filtrar apenas setores ativos
@@ -581,10 +588,10 @@ def pg_financeiro():
     # Buscar nomes de todos os setores para garantir mapeamento correto
     todos_setores = get_supabase().table("setores").select("id,nome").execute().data or []
     sid_nm = {s['id']:s['nome'] for s in todos_setores}
- 
+
     c_ant = next((c for c in ciclos if c['id']<cs['id']),None)
     r_ant = {r['setor_id']:r for r in get_resultados(c_ant['id'],tipo='financeiro')} if c_ant else {}
- 
+
     # KPIs consolidados do grupo
     if res:
         df_res = pd.DataFrame(res)
@@ -593,7 +600,7 @@ def pg_financeiro():
         iaf_medio = df_res['iaf'].mean()
         pct_multi_med = df_res['pct_multimarcas'].mean()
         pct_ativ_med = df_res['pct_atividade'].mean()
- 
+
         # Calcular metas consolidadas do grupo
         meta_receita_total = sum(
             float(metas.get(s['id'],{}).get('meta_boticario',0)) +
@@ -606,15 +613,15 @@ def pg_financeiro():
         )
         meta_multi_med = sum(float(metas.get(s['id'],{}).get('meta_multimarcas',0)) for s in sf_list) / len(sf_list) if sf_list else 0
         meta_ativ_med = sum(float(metas.get(s['id'],{}).get('meta_atividade',0)) for s in sf_list) / len(sf_list) if sf_list else 0
- 
+
         pct_rec = receita_total/meta_receita_total*100 if meta_receita_total > 0 else 0
         pct_multi_cum = pct_multi_med/meta_multi_med*100 if meta_multi_med > 0 else 0
         pct_ativ_cum = pct_ativ_med/meta_ativ_med*100 if meta_ativ_med > 0 else 0
- 
+
         def sub_meta(realizado_str, meta_str, pct_cum):
             cor = "#4CAF50" if pct_cum>=100 else ("#FFC107" if pct_cum>=95 else ("#F44336" if pct_cum>0 else "#999"))
             return f'Meta: {meta_str} <span style="color:{cor};font-weight:600">({pct_cum:.0f}%)</span>' if pct_cum > 0 else f'Meta: {meta_str}'
- 
+
         st.markdown("### 📊 Visão do Grupo")
         c1,c2,c3,c4,c5 = st.columns(5)
         with c1: kpi_grande("Receita Total", fmt_moeda(receita_total),
@@ -626,11 +633,11 @@ def pg_financeiro():
         with c5: kpi_grande("Atividade Méd.", fmt_pct(pct_ativ_med),
             subtexto=sub_meta("", fmt_pct(meta_ativ_med), pct_ativ_cum) if meta_ativ_med>0 else None)
         st.markdown("---")
- 
+
         # Rankings por indicador
         st.markdown("### 🏆 Rankings por Indicador")
         tab_iaf, tab_multi, tab_ativ, tab_cab, tab_make = st.tabs(["IAF","Multimarcas","Atividade","Cabelos %","Make %"])
- 
+
         def mini_ranking(dados_rank, ind_key, fmt="pct"):
             dados_rank = sorted(dados_rank, key=lambda x: x[ind_key], reverse=True)
             for pos, d in enumerate(dados_rank, 1):
@@ -652,7 +659,7 @@ def pg_financeiro():
                     <span style="font-size:13px;font-weight:700;color:{cor}">{ic} {vs}</span>
                     <span style="font-size:11px;color:#aaa">meta {ms} ({pct:.0f}%)</span>
                 </div>""", unsafe_allow_html=True)
- 
+
         dados_rank_base = []
         for r in res:
             nm = sid_nm.get(r['setor_id'],str(r['setor_id']))
@@ -664,7 +671,7 @@ def pg_financeiro():
                 'pct_cabelos':r['pct_cabelos'],'meta_pct_cabelos':float(meta.get('meta_pct_cabelos',0)),
                 'pct_make':r['pct_make'],'meta_pct_make':float(meta.get('meta_pct_make',0)),
             })
- 
+
         with tab_iaf:
             res_sorted = sorted(res, key=lambda x: x['iaf'], reverse=True)
             for pos,r in enumerate(res_sorted,1):
@@ -678,9 +685,9 @@ def pg_financeiro():
             mini_ranking(dados_rank_base, 'pct_cabelos')
         with tab_make:
             mini_ranking(dados_rank_base, 'pct_make')
- 
+
         st.markdown("---")
- 
+
     # Desempenho individual com radar
     st.markdown("### 📋 Desempenho Individual")
     res_sorted_ind = sorted(res, key=lambda x: x['iaf'], reverse=True)
@@ -695,7 +702,7 @@ def pg_financeiro():
         if delta is not None:
             sc = "#4CAF50" if delta>=0 else "#F44336"
             delta_html = f'<span style="font-size:12px;color:{sc}">{"▲" if delta>=0 else "▼"}{abs(delta):.1f}%</span>'
- 
+
         col1, col2 = st.columns([1, 1])
         with col1:
             st.markdown(f"""<div style="border:2px solid {cor};border-radius:12px;padding:16px;background:white;height:100%">
@@ -744,7 +751,7 @@ def pg_financeiro():
                     "Atividade", fmt_pct(r['pct_atividade']), fmt_pct(float(meta.get('meta_atividade',0)))
                 ) +
                 f"""</div></div>""", unsafe_allow_html=True)
- 
+
         with col2:
             # Radar
             categorias = ['Boticário','Eudora','OUI','QDB','Cabelos','Make B.','Multimarcas','Atividade']
@@ -781,9 +788,9 @@ def pg_financeiro():
                 showlegend=False, height=320, margin=dict(t=20,b=20,l=20,r=20)
             )
             st.plotly_chart(fig_radar, use_container_width=True)
- 
+
         st.markdown("---")
- 
+
 # =============================================
 # PÁGINA ER
 # =============================================
@@ -793,23 +800,23 @@ def pg_er():
     st.markdown("---")
     ciclo = get_ciclo_ativo()
     if not ciclo: st.warning("⚠️ Sem ciclo ativo."); return
- 
+
     ciclos = get_ciclos(); nomes = [c['nome'] for c in ciclos]
     sel = st.selectbox("Ciclo", nomes, index=nomes.index(ciclo['nome']) if ciclo['nome'] in nomes else 0)
     cs = next((c for c in ciclos if c['nome']==sel),ciclo)
     meta_nm = float(get_config('meta_nao_multimarca_caixa',30))
     res = get_resultados_er(cs['id'])
     if not res: st.info("📊 Sem dados ER para este ciclo."); return
- 
+
     df = pd.DataFrame(res)
     tp = int(df['total_pedidos'].sum())
     tnm = int(df['pedidos_nao_multimarca'].sum())
     pg = tnm/tp*100 if tp>0 else 0
- 
+
     # Buscar dados brutos do ER do Supabase para análises adicionais
     # Os dados brutos ficam na sessão após o upload — usar df_er_raw se disponível
     df_er_raw = st.session_state.get('df_er_raw', None)
- 
+
     # KPIs — substituir "caixas acima da meta" por revendedores únicos
     rev_unicos = int(df_er_raw['Pessoa'].nunique()) if df_er_raw is not None else None
     c1,c2,c3,c4 = st.columns(4)
@@ -821,14 +828,14 @@ def pg_er():
             kpi_grande("Revendedores Únicos", f"{rev_unicos:,}".replace(",","."), "visitaram o ER no ciclo")
         else:
             kpi_grande("Revendedores Únicos", "—", "Reprocesse os dados para ver")
- 
+
     st.markdown("---")
     st.markdown("### 🏆 Ranking Multimarca")
- 
+
     df['pedidos_multimarca'] = df['total_pedidos'] - df['pedidos_nao_multimarca']
     df['pct_multimarca'] = 100 - df['pct_nao_multimarca']
     df_rank = df.sort_values('pedidos_multimarca', ascending=False).reset_index(drop=True)
- 
+
     for pos, row in df_rank.iterrows():
         pos_num = pos + 1
         pm = row['pedidos_multimarca']
@@ -852,16 +859,16 @@ def pg_er():
             f'</div></div></div></div>'
         )
         st.markdown(html, unsafe_allow_html=True)
- 
+
     st.markdown("---")
- 
+
     # Análises adicionais — apenas se dados brutos disponíveis
     if df_er_raw is not None:
         col_a, col_b, col_c = st.columns(3)
- 
+
         total_rev = df_er_raw['Pessoa'].nunique()
         total_ped = len(df_er_raw)
- 
+
         def tabela_mini(titulo, dados, col_label, col_pct):
             st.markdown(f'<p style="font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">{titulo}</p>', unsafe_allow_html=True)
             html = '<div style="background:white;border-radius:8px;border:1px solid #eee;overflow:hidden">'
@@ -876,27 +883,27 @@ def pg_er():
                 )
             html += '</div>'
             st.markdown(html, unsafe_allow_html=True)
- 
+
         with col_a:
             bairro_rev = df_er_raw.groupby('Bairro')['Pessoa'].nunique().reset_index()
             bairro_rev.columns = ['Bairro','Revendedores']
             bairro_rev['%'] = bairro_rev['Revendedores'] / total_rev * 100
             tabela_mini("📍 Por Bairro", bairro_rev.sort_values('Revendedores', ascending=False), 'Bairro', '%')
- 
+
         with col_b:
             seg_rev = df_er_raw.groupby('Papel')['Pessoa'].nunique().reset_index()
             seg_rev.columns = ['Segmentação','Revendedores']
             seg_rev['%'] = seg_rev['Revendedores'] / total_rev * 100
             tabela_mini("🏅 Por Segmentação", seg_rev.sort_values('Revendedores', ascending=False), 'Segmentação', '%')
- 
+
         with col_c:
             pag_cnt = df_er_raw['PlanoPagamento'].value_counts().reset_index()
             pag_cnt.columns = ['Forma','Pedidos']
             pag_cnt['%'] = pag_cnt['Pedidos'] / total_ped * 100
             tabela_mini("💳 Forma de Pagamento", pag_cnt, 'Forma', '%')
- 
+
         st.markdown("---")
- 
+
         # Gráfico frequência por dia
         st.markdown("### 📅 Frequência de Revendedores por Dia")
         dias_pt = {0:'Segunda',1:'Terça',2:'Quarta',3:'Quinta',4:'Sexta',5:'Sábado',6:'Domingo'}
@@ -914,10 +921,10 @@ def pg_er():
         fig3.update_layout(height=380, margin=dict(t=20,b=60),
                           xaxis_tickangle=-45, yaxis_title="Revendedores Únicos")
         st.plotly_chart(fig3, use_container_width=True)
- 
+
     else:
         st.info("ℹ️ Para ver análises de bairro, segmentação, pagamento e frequência, reprocesse os dados em Configurações → Upload.")
- 
+
     st.markdown("---")
     st.markdown("### 📊 Comparativo por Caixa")
     df_graf = df_rank.sort_values('pedidos_multimarca', ascending=False)
@@ -926,7 +933,7 @@ def pg_er():
         marker_color=cores,text=[fmt_pct(p) for p in df_graf['pct_multimarca']],textposition='outside'))
     fig.update_layout(height=360,margin=dict(t=10,b=10)); fig.update_yaxes(ticksuffix="%",title="% Multimarca")
     st.plotly_chart(fig,use_container_width=True)
- 
+
     evol=[]
     for c in ciclos[-6:]:
         for r in get_resultados_er(c['id']):
@@ -936,7 +943,7 @@ def pg_er():
         fig2=px.line(pd.DataFrame(evol),x='Ciclo',y='% Multimarca',color='Caixa',markers=True)
         fig2.update_layout(height=300,margin=dict(t=10,b=10)); fig2.update_yaxes(ticksuffix="%")
         st.plotly_chart(fig2,use_container_width=True)
- 
+
 # =============================================
 # PÁGINA CONFIGURAÇÕES
 # =============================================
@@ -947,7 +954,7 @@ def pg_config():
     st.markdown("---")
     sb = get_supabase()
     usuario = st.session_state.get('usuario','sistema')
- 
+
     if aba == "Setores":
         st.markdown("### Setores")
         st.caption("Setores detectados automaticamente no upload. Defina o tipo e status de cada um.")
@@ -964,7 +971,7 @@ def pg_config():
                     if st.button("💾",key=f"s{s['id']}"):
                         sb.table("setores").update({"tipo":ti,"ativo":at=="Ativo"}).eq("id",s['id']).execute()
                         st.success("✓"); st.rerun()
- 
+
     elif aba == "Pontuação & IAF":
         st.caption("Ajuste os pesos e faixas de classificação. Clique em Salvar ao terminar.")
         t1,t2,t3 = st.tabs(["Pontuação Base","Pontuação Financeiro","Faixas & IAF"])
@@ -1003,7 +1010,7 @@ def pg_config():
                         ('meta_nao_multimarca_caixa',mc)]:
                 set_config(k,str(v),usuario)
             st.success("✅ Salvo!")
- 
+
     elif aba == "Ciclos & Metas":
         tc,tm = st.tabs(["Ciclos","Metas do Período"])
         with tc:
@@ -1068,7 +1075,7 @@ def pg_config():
                                 'meta_cabelos':mca,'meta_make':mma,'meta_multimarcas':mmu,'meta_pct_cabelos':mpc,
                                 'meta_pct_make':mpm,'meta_atividade':mat,'tamanho_base':mtb,'updated_by':usuario})
                             st.success("Salvo!")
- 
+
     elif aba == "Upload":
         requer_perfil("admin")
         st.markdown("### Upload de Planilhas")
@@ -1110,10 +1117,12 @@ def pg_config():
                     # Salvar ER bruto na sessão para análises da página ER
                     if 'ER' in dfs:
                         st.session_state['df_er_raw'] = dfs['ER']
+                    # Salvar ativos únicos globais na sessão
+                    st.session_state['ativos_unicos_global'] = res_p.get('ativos_unicos_global', 0)
                     st.success(f"✅ {len(uploaded)} arquivo(s) processados com sucesso!")
                 except Exception as e:
                     st.error(f"❌ Erro: {e}")
- 
+
     elif aba == "Senhas":
         requer_perfil("admin")
         st.markdown("### Senhas de Acesso")
@@ -1134,7 +1143,7 @@ def pg_config():
             na = st.text_input("Nova senha",type="password",key="na")
             if st.button("Alterar",key="aa"):
                 if na: set_config('senha_admin',na,usuario); st.success("✓")
- 
+
     elif aba == "Logs":
         st.markdown("### Logs do Sistema")
         tl1,tl2 = st.tabs(["Uploads","Alterações"])
@@ -1156,7 +1165,7 @@ def pg_config():
                 st.dataframe(dla[['tabela','campo','valor_anterior','valor_novo','usuario','created_at']],use_container_width=True)
             else:
                 st.info("Sem alterações registradas.")
- 
+
 # =============================================
 # MAIN
 # =============================================
@@ -1177,3 +1186,4 @@ else:
     elif pg == "💼 Financeiro": pg_financeiro()
     elif pg == "🏪 ER": pg_er()
     elif pg == "⚙️ Configurações": pg_config()
+
