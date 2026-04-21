@@ -738,8 +738,8 @@ def pg_er(ciclo_id):
     rev_multi_er=int(get_config(f"er_rev_multi_{cs['id']}",0) or 0)
     rev_make_er=int(get_config(f"er_rev_make_{cs['id']}",0) or 0)
     rev_cab_er=int(get_config(f"er_rev_cab_{cs['id']}",0) or 0)
-    pct_make_er=rev_make_er/total_ativos_global*100 if total_ativos_global>0 else 0
-    pct_cab_er=rev_cab_er/total_ativos_global*100 if total_ativos_global>0 else 0
+    pct_make_er=rev_make_er/rev_er*100 if rev_er>0 else 0
+    pct_cab_er=rev_cab_er/rev_er*100 if rev_er>0 else 0
     # Listas para rankings de cabelos e make
     import json
     cab_er_codes=set(json.loads(get_config(f"er_cab_list_{cs['id']}","[]") or "[]"))
@@ -748,8 +748,8 @@ def pg_er(ciclo_id):
     c1,c2,c3,c4=st.columns(4)
     with c1: card_kpi("Ativos no ER",fmt_int(rev_er),f"× {fmt_int(total_ativos_global)} ativos total" if total_ativos_global>0 else None,"#1a2e4a")
     with c2: card_kpi("No. RV. Multimarcas",fmt_int(rev_multi_er),"dentre os que vieram ao ER","#F9A825")
-    with c3: card_kpi("Compraram Make",f"{fmt_int(rev_make_er)} ({fmt_pct(pct_make_er)})","sobre total ativos","#1a2e4a")
-    with c4: card_kpi("Compraram Cabelos",f"{fmt_int(rev_cab_er)} ({fmt_pct(pct_cab_er)})","sobre total ativos","#1a2e4a")
+    with c3: card_kpi("Compraram Make",f"{fmt_int(rev_make_er)} ({fmt_pct(pct_make_er)})",f"de {fmt_int(rev_er)} no ER","#1a2e4a")
+    with c4: card_kpi("Compraram Cabelos",f"{fmt_int(rev_cab_er)} ({fmt_pct(pct_cab_er)})",f"de {fmt_int(rev_er)} no ER","#1a2e4a")
     st.markdown("")
     # Ranking com 3 abas
     st.markdown("#### 🏆 Ranking Multimarca")
