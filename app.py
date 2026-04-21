@@ -11,7 +11,7 @@ st.set_page_config(page_title="Dashboard Venda Direta", page_icon="💼", layout
 # TEMA VISUAL
 # =============================================
 st.markdown("""<style>
-    .block-container { padding-top: 0.5rem; padding-left: 1.2rem; padding-right: 1.2rem; }
+    .block-container { padding-top: 2rem; padding-left: 1.2rem; padding-right: 1.2rem; }
     .stApp { background: #f0f2f5; }
     section[data-testid="stSidebar"] { background: #1a2e4a !important; }
     section[data-testid="stSidebar"] > div { background: #1a2e4a !important; }
@@ -33,6 +33,14 @@ st.markdown("""<style>
     .stMarkdown hr { margin: 0.4rem 0; border-color: #e2e8f0; }
     .stAlert { border-radius: 8px !important; }
     p { font-size: 13px; }
+    .stTabs [data-baseweb="tab"] { font-size: 12px; padding: 6px 16px; min-width: 80px; }
+    .stTabs [data-baseweb="tab-panel"] { background: white; border-radius: 0 0 8px 8px; padding: 12px; }
+    .stRadio [data-testid="stHorizontalBlock"] { gap: 12px !important; }
+    .stRadio label { padding: 6px 14px !important; border-radius: 20px !important; border: 1px solid #e2e8f0 !important; font-size: 12px !important; }
+    .stRadio label[data-checked="true"] { background: #1a2e4a !important; color: white !important; border-color: #1a2e4a !important; }
+    .stNumberInput input { font-size: 13px; }
+    .stTextInput input { font-size: 13px; }
+    [data-testid="stForm"] { background: white; border-radius: 10px; padding: 16px; border: 0.5px solid #e2e8f0; }
 </style>""", unsafe_allow_html=True)
 
 SUPABASE_URL = st.secrets.get("SUPABASE_URL", "https://bddjuowbotsybamawsts.supabase.co")
@@ -274,12 +282,13 @@ def semaforo_linha(pct, label, realizado_str, meta_str):
     ic="⚪" if pct==0 else ("🟢" if pct>=100 else ("🟡" if pct>=95 else "🔴"))
     return (
         f'<div style="display:flex;justify-content:space-between;align-items:center;'
-        f'padding:6px 0;border-bottom:1px solid #f1f5f9">'
-        f'<span style="font-size:12px;color:#475569">{ic} {label}</span>'
-        f'<div style="text-align:right">'
-        f'<span style="font-size:13px;font-weight:600;color:{cor}">{realizado_str}</span>'
-        f'<span style="font-size:11px;color:#94a3b8"> / {meta_str}</span>'
-        f'<br><span style="font-size:11px;color:{cor};font-weight:600">{pct:.0f}%</span>'
+        f'padding:4px 0;border-bottom:1px solid #f8fafc">'
+        f'<span style="font-size:11px;color:#64748b">{ic} {label}</span>'
+        f'<div style="display:flex;align-items:center;gap:6px">'
+        f'<span style="font-size:11px;font-weight:600;color:{cor}">{realizado_str}</span>'
+        f'<span style="font-size:10px;color:#cbd5e1">/</span>'
+        f'<span style="font-size:10px;color:#94a3b8">{meta_str}</span>'
+        f'<span style="font-size:10px;color:{cor};background:{cor}15;padding:1px 5px;border-radius:4px;font-weight:600">{pct:.0f}%</span>'
         f'</div></div>'
     )
 
@@ -320,17 +329,16 @@ def linha_rank(pos, nome, iaf, cl, delta=None, extra=None, atencao=False):
     st.markdown(html, unsafe_allow_html=True)
 
 def tabela_mini(titulo, dados, col_label, col_pct, col_extra=None):
-    st.markdown(f'<p style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">{titulo}</p>', unsafe_allow_html=True)
-    html='<div style="background:white;border-radius:8px;border:1px solid #e2e8f0;overflow:hidden">'
+    st.markdown(f'<p style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px">{titulo}</p>', unsafe_allow_html=True)
+    html='<div style="background:white;border-radius:8px;overflow:hidden;border:0.5px solid #e2e8f0">'
     for i,(_,row) in enumerate(dados.iterrows()):
-        bg="#f8fafc" if i%2==0 else "white"
-        extra_html=f'<span style="font-size:11px;color:#94a3b8;margin-left:8px">{row[col_extra]}</span>' if col_extra and col_extra in row else ""
+        extra_html=f'<span style="font-size:10px;color:#94a3b8;margin-left:6px">{row[col_extra]}</span>' if col_extra and col_extra in row and row[col_extra] else ""
         html+=(
             f'<div style="display:flex;justify-content:space-between;align-items:center;'
-            f'padding:5px 10px;background:{bg}">'
-            f'<span style="font-size:12px;color:#475569">{row[col_label]}</span>'
-            f'<div>'
-            f'<span style="font-size:12px;font-weight:600;color:#1e293b">{row[col_pct]:.1f}%</span>'
+            f'padding:5px 10px;border-bottom:0.5px solid #f8fafc">'
+            f'<span style="font-size:11px;color:#475569">{row[col_label]}</span>'
+            f'<div style="display:flex;align-items:center">'
+            f'<span style="font-size:11px;font-weight:600;color:#1a2e4a">{row[col_pct]:.1f}%</span>'
             f'{extra_html}</div></div>'
         )
     html+='</div>'
@@ -633,23 +641,8 @@ def pg_financeiro(ciclo_id):
             delta_html=""
             if delta is not None:
                 dc="#16a34a" if delta>=0 else "#dc2626"
-                delta_html=f'<span style="font-size:11px;color:{dc}">{"▲" if delta>=0 else "▼"}{abs(delta):.1f}%</span>'
-            warn_html='<span style="font-size:10px;background:#fee2e2;color:#dc2626;padding:1px 6px;border-radius:4px;margin-left:6px">atenção</span>' if atencao else ""
-            st.markdown(
-                f'<div style="background:white;border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border-top:3px solid {cor}">'
-                f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
-                f'<span style="font-weight:600;font-size:14px;color:#1e293b">{nome}{warn_html}</span>'
-                f'<span style="background:{cor};color:white;padding:2px 8px;border-radius:10px;font-size:11px">{em} {r["classificacao"]}</span>'
-                f'</div>'
-                f'<div style="text-align:center;margin:10px 0">'
-                f'<span style="font-size:36px;font-weight:700;color:{cor}">{fmt_pct(r["iaf"])}</span>'
-                f'<div style="font-size:11px;color:#94a3b8;margin-top:2px">{r["pontuacao_obtida"]:.0f}/{r["pontuacao_maxima"]:.0f} pts {delta_html}</div>'
-                f'</div>'
-                f'<div style="background:#f1f5f9;border-radius:4px;height:6px;overflow:hidden;margin-bottom:10px">'
-                f'<div style="background:{cor};width:{min(r["iaf"],100):.1f}%;height:100%;border-radius:4px"></div>'
-                f'</div>'
-                f'<div style="font-size:12px;color:#64748b;margin-bottom:8px">Receita Total: <b style="color:#1e293b">{fmt_moeda(receita_sup)}</b></div>'
-                f'<div style="font-size:12px">',unsafe_allow_html=True)
+                delta_html=f'<span style="font-size:10px;color:{dc}">{"▲" if delta>=0 else "▼"}{abs(delta):.1f}%</span>'
+            warn_html='<span style="font-size:10px;background:#fee2e2;color:#dc2626;padding:1px 5px;border-radius:4px;margin-left:4px">atenção</span>' if atencao else ""
             indicadores_html=""
             for cv,cm,label in MARCAS_CFG:
                 v=r.get(cv,0); m=float(meta.get(cm,0))
@@ -659,7 +652,21 @@ def pg_financeiro(ciclo_id):
                 v=r.get(cv,0); m=float(meta.get(cm,0))
                 pct=v/m*100 if m>0 else 0
                 indicadores_html+=semaforo_linha(pct,label,fmt_pct(v),fmt_pct(m))
-            st.markdown(indicadores_html+"</div></div>",unsafe_allow_html=True)
+            st.markdown(
+                f'<div style="background:white;border-radius:10px;padding:14px;border-top:3px solid {cor}">'
+                f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+                f'<span style="font-weight:700;font-size:13px;color:#1e293b">{nome}{warn_html}</span>'
+                f'<span style="background:{cor};color:white;padding:2px 8px;border-radius:10px;font-size:10px">{em} {r["classificacao"]}</span>'
+                f'</div>'
+                f'<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px">'
+                f'<span style="font-size:30px;font-weight:700;color:{cor}">{fmt_pct(r["iaf"])}</span>'
+                f'<span style="font-size:11px;color:#94a3b8">{r["pontuacao_obtida"]:.0f}/{r["pontuacao_maxima"]:.0f} pts {delta_html}</span>'
+                f'</div>'
+                f'<div style="background:#f1f5f9;border-radius:3px;height:4px;overflow:hidden;margin-bottom:8px">'
+                f'<div style="background:{cor};width:{min(r["iaf"],100):.1f}%;height:100%;border-radius:3px"></div>'
+                f'</div>'
+                f'<div style="font-size:11px;color:#64748b;margin-bottom:6px">Receita: <b style="color:#1a2e4a">{fmt_moeda(receita_sup)}</b> | Ativos: <b style="color:#1a2e4a">{r.get("ativos",0)}</b></div>'
+                f'<div>{indicadores_html}</div></div>',unsafe_allow_html=True)
         with col2:
             categorias=['Boticário','Eudora','OUI','QDB','Cabelos','Make','Multimarcas','Atividade']
             metas_radar=[float(meta.get(k,0)) for k in ['meta_boticario','meta_eudora','meta_oui','meta_qdb','meta_cabelos','meta_make','meta_multimarcas','meta_atividade']]
