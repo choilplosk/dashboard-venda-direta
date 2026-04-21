@@ -730,26 +730,20 @@ def pg_er(ciclo_id):
     df=pd.DataFrame(res)
     tp=int(df['total_pedidos'].sum()); tnm=int(df['pedidos_nao_multimarca'].sum())
     df_er_raw=st.session_state.get('df_er_raw',None)
-    df_multi_raw=st.session_state.get('df_multi_raw',None)
-    df_make_raw=st.session_state.get('df_make_raw',None)
     df_cab_raw=st.session_state.get('df_cab_raw',None)
-    rev_er=0; rev_multi_er=0; rev_make_er=0; rev_cab_er=0
+    df_make_raw=st.session_state.get('df_make_raw',None)
     total_ativos_global=int(get_config(f"ativos_unicos_{cs['id']}",0) or 0)
-    rev_er_set=set()
-    if df_er_raw is not None:
-        rev_er=df_er_raw['Pessoa'].nunique()
-        rev_er_set=set(df_er_raw['Pessoa'].unique())
-    if df_multi_raw is not None and rev_er_set:
-        multi_set=set(df_multi_raw[df_multi_raw['is_multimarca']]['CodigoRevendedora'].unique())
-        rev_multi_er=len(rev_er_set&multi_set)
-    if df_make_raw is not None and rev_er_set:
-        make_set=set(df_make_raw['CodigoRevendedora'].unique())
-        rev_make_er=len(rev_er_set&make_set)
-    if df_cab_raw is not None and rev_er_set:
-        cab_set=set(df_cab_raw['CodigoRevendedora'].unique())
-        rev_cab_er=len(rev_er_set&cab_set)
+    # Buscar métricas ER do Supabase (persistentes entre sessões)
+    rev_er=int(get_config(f"er_rev_total_{cs['id']}",0) or 0)
+    rev_multi_er=int(get_config(f"er_rev_multi_{cs['id']}",0) or 0)
+    rev_make_er=int(get_config(f"er_rev_make_{cs['id']}",0) or 0)
+    rev_cab_er=int(get_config(f"er_rev_cab_{cs['id']}",0) or 0)
     pct_make_er=rev_make_er/total_ativos_global*100 if total_ativos_global>0 else 0
     pct_cab_er=rev_cab_er/total_ativos_global*100 if total_ativos_global>0 else 0
+    # Listas para rankings de cabelos e make
+    import json
+    cab_er_codes=set(json.loads(get_config(f"er_cab_list_{cs['id']}","[]") or "[]"))
+    make_er_codes=set(json.loads(get_config(f"er_make_list_{cs['id']}","[]") or "[]"))
     # KPIs
     c1,c2,c3,c4=st.columns(4)
     with c1: card_kpi("Ativos no ER",fmt_int(rev_er),f"× {fmt_int(total_ativos_global)} ativos total" if total_ativos_global>0 else None,"#1a2e4a")
@@ -783,9 +777,8 @@ def pg_er(ciclo_id):
             st.markdown(html,unsafe_allow_html=True)
     with tab_multi: ranking_caixa(df,'pct_multimarca','Multimarca')
     with tab_cab_r:
-        if df_er_raw is not None and df_cab_raw is not None:
-            cab_set=set(df_cab_raw['CodigoRevendedora'].unique())
-            df_er_c=df_er_raw.copy(); df_er_c['is_cab']=df_er_c['Pessoa'].isin(cab_set)
+        if df_er_raw is not None and cab_er_codes:
+            df_er_c=df_er_raw.copy(); df_er_c['is_cab']=df_er_c['Pessoa'].isin(cab_er_codes)
             cab_rank=df_er_c.groupby('Usuario de Finalização').agg(total=('Pessoa','count'),cab=('is_cab','sum')).reset_index()
             cab_rank['pct_cab']=cab_rank['cab']/cab_rank['total']*100
             cab_rank['pedidos_cab']=cab_rank['cab']
@@ -797,9 +790,8 @@ def pg_er(ciclo_id):
                 st.markdown(f'<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:white;border-radius:8px;border:1px solid #e2e8f0;margin-bottom:4px"><div style="min-width:26px;height:26px;border-radius:50%;background:{pos_bg};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:{pos_txt}">{pos_num}</div><span style="flex:1;font-size:13px;font-weight:600;color:#1e293b">{row["Usuario de Finalização"]}</span><span style="font-size:12px;color:#94a3b8">{int(row["cab"])} pedidos</span><span style="font-size:15px;font-weight:700;color:{cor}">{ic} {fmt_pct(v)}</span></div>',unsafe_allow_html=True)
         else: st.info("Reprocesse os dados para ver este ranking.")
     with tab_make_r:
-        if df_er_raw is not None and df_make_raw is not None:
-            make_set=set(df_make_raw['CodigoRevendedora'].unique())
-            df_er_m=df_er_raw.copy(); df_er_m['is_make']=df_er_m['Pessoa'].isin(make_set)
+        if df_er_raw is not None and make_er_codes:
+            df_er_m=df_er_raw.copy(); df_er_m['is_make']=df_er_m['Pessoa'].isin(make_er_codes)
 
             make_rank=df_er_m.groupby('Usuario de Finalização').agg(total=('Pessoa','count'),mak=('is_make','sum')).reset_index()
             make_rank['pct_make']=make_rank['mak']/make_rank['total']*100
@@ -812,7 +804,7 @@ def pg_er(ciclo_id):
         else: st.info("Reprocesse os dados para ver este ranking.")
     st.markdown("")
     # Tabelas analíticas
-    if df_er_raw is not None:
+    if df_er_raw is not None and rev_er > 0:
         total_rev=df_er_raw['Pessoa'].nunique()
         col_a,col_b=st.columns(2)
         with col_a:
@@ -1054,10 +1046,42 @@ def pg_config():
                     if 'ER' in dfs: st.session_state['df_er_raw']=dfs['ER']
                     if 'Make' in dfs: st.session_state['df_make_raw']=dfs['Make']
                     if 'Cabelos' in dfs: st.session_state['df_cab_raw']=dfs['Cabelos']
-                    # Salvar multimarcas na sessão
+                    # Calcular e salvar métricas ER no Supabase
                     if 'Ativos' in dfs:
                         df_multi=calc_multimarcas(dfs['Ativos'],dfs)
                         st.session_state['df_multi_raw']=df_multi
+                        # Calcular métricas ER persistentes
+                        if 'ER' in dfs:
+                            er_set=set(dfs['ER']['Pessoa'].unique())
+                            multi_set=set(df_multi[df_multi['is_multimarca']]['CodigoRevendedora'].unique())
+                            rev_multi_er=len(er_set&multi_set)
+                            rev_er_total=len(er_set)
+                            rev_make_er=0; rev_cab_er=0
+                            if 'Make' in dfs:
+                                rev_make_er=len(er_set&set(dfs['Make']['CodigoRevendedora'].unique()))
+                            if 'Cabelos' in dfs:
+                                rev_cab_er=len(er_set&set(dfs['Cabelos']['CodigoRevendedora'].unique()))
+                            # Salvar no Supabase
+                            for chave_er,val_er in [
+                                (f"er_rev_total_{ca['id']}", rev_er_total),
+                                (f"er_rev_multi_{ca['id']}", rev_multi_er),
+                                (f"er_rev_make_{ca['id']}", rev_make_er),
+                                (f"er_rev_cab_{ca['id']}", rev_cab_er),
+                            ]:
+                                ex_er=sb.table("configuracoes").select("id").eq("chave",chave_er).execute()
+                                if ex_er.data: sb.table("configuracoes").update({"valor":str(val_er),"updated_by":usuario}).eq("chave",chave_er).execute()
+                                else: sb.table("configuracoes").insert({"chave":chave_er,"valor":str(val_er),"updated_by":usuario}).execute()
+                            # Salvar listas de códigos para rankings de cabelos e make no ER
+                            import json
+                            cab_er_list=list(er_set&set(dfs['Cabelos']['CodigoRevendedora'].unique())) if 'Cabelos' in dfs else []
+                            make_er_list=list(er_set&set(dfs['Make']['CodigoRevendedora'].unique())) if 'Make' in dfs else []
+                            for chave_list,val_list in [
+                                (f"er_cab_list_{ca['id']}", json.dumps(cab_er_list)),
+                                (f"er_make_list_{ca['id']}", json.dumps(make_er_list)),
+                            ]:
+                                ex_l=sb.table("configuracoes").select("id").eq("chave",chave_list).execute()
+                                if ex_l.data: sb.table("configuracoes").update({"valor":val_list,"updated_by":usuario}).eq("chave",chave_list).execute()
+                                else: sb.table("configuracoes").insert({"chave":chave_list,"valor":val_list,"updated_by":usuario}).execute()
                     for nm in uploaded: log_upload(ca['id'],nm,usuario)
                     st.success(f"✅ {len(uploaded)} arquivo(s) processados com sucesso!")
                 except Exception as e:
