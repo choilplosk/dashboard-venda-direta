@@ -352,9 +352,10 @@ def pg_home():
     fin = df[df['tipo']=='financeiro']
     base = df[df['tipo']=='base']
     receita_total = df[mc].sum().sum()
-    # Ativos únicos globais — vem da sessão após upload
-    ativos_unicos_global = st.session_state.get('ativos_unicos_global', None)
-    total_ativos = ativos_unicos_global if ativos_unicos_global is not None else int(fin['ativos'].sum())
+    # Ativos únicos globais — buscar do Supabase
+    chave_ativos = f"ativos_unicos_{ciclo['id']}"
+    ativos_unicos_global = get_config(chave_ativos, None)
+    total_ativos = int(ativos_unicos_global) if ativos_unicos_global is not None else int(fin['ativos'].sum())
 
     # Atividade global = ativos únicos / soma tamanho_base de todos os setores financeiros ativos
     setores_fin_home = get_setores(tipo='financeiro')
@@ -1117,8 +1118,15 @@ def pg_config():
                     # Salvar ER bruto na sessão para análises da página ER
                     if 'ER' in dfs:
                         st.session_state['df_er_raw'] = dfs['ER']
-                    # Salvar ativos únicos globais na sessão
-                    st.session_state['ativos_unicos_global'] = res_p.get('ativos_unicos_global', 0)
+                    # Salvar ativos únicos globais no Supabase
+                    ativos_glob = res_p.get('ativos_unicos_global', 0)
+                    st.session_state['ativos_unicos_global'] = ativos_glob
+                    chave_ativos = f"ativos_unicos_{ca['id']}"
+                    existing_av = sb.table("configuracoes").select("id").eq("chave", chave_ativos).execute()
+                    if existing_av.data:
+                        sb.table("configuracoes").update({"valor": str(ativos_glob), "updated_by": usuario}).eq("chave", chave_ativos).execute()
+                    else:
+                        sb.table("configuracoes").insert({"chave": chave_ativos, "valor": str(ativos_glob), "updated_by": usuario}).execute()
                     st.success(f"✅ {len(uploaded)} arquivo(s) processados com sucesso!")
                 except Exception as e:
                     st.error(f"❌ Erro: {e}")
@@ -1186,4 +1194,3 @@ else:
     elif pg == "💼 Financeiro": pg_financeiro()
     elif pg == "🏪 ER": pg_er()
     elif pg == "⚙️ Configurações": pg_config()
-
