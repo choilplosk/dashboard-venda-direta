@@ -11,16 +11,28 @@ st.set_page_config(page_title="Dashboard Venda Direta", page_icon="💼", layout
 # TEMA VISUAL
 # =============================================
 st.markdown("""<style>
-    .block-container { padding-top: 0; padding-left: 1rem; padding-right: 1rem; }
-    section[data-testid="stSidebar"] { background: #1a2e4a; }
-    section[data-testid="stSidebar"] * { color: white !important; }
-    section[data-testid="stSidebar"] .stRadio label { color: #cbd5e1 !important; font-size: 14px; }
+    .block-container { padding-top: 0.5rem; padding-left: 1.2rem; padding-right: 1.2rem; }
+    .stApp { background: #f0f2f5; }
+    section[data-testid="stSidebar"] { background: #1a2e4a !important; }
+    section[data-testid="stSidebar"] > div { background: #1a2e4a !important; }
+    section[data-testid="stSidebar"] * { color: #94a3b8 !important; }
+    section[data-testid="stSidebar"] .stRadio label { font-size: 13px !important; padding: 6px 0; }
     section[data-testid="stSidebar"] .stRadio label:hover { color: white !important; }
-    div[data-testid="metric-container"] { background: white; border-radius:8px; padding:10px; }
-    .stTabs [data-baseweb="tab"] { font-size: 13px; }
-    .stSelectbox label { font-size: 13px; color: #64748b; }
-    h1,h2,h3 { color: #1a2e4a !important; }
-    .stMarkdown hr { margin: 0.5rem 0; border-color: #e2e8f0; }
+    section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p { color: white !important; }
+    section[data-testid="stSidebar"] .stSelectbox label { color: #94a3b8 !important; font-size: 11px !important; }
+    section[data-testid="stSidebar"] .stSelectbox div { background: #2d4a6e !important; border: none !important; color: white !important; }
+    section[data-testid="stSidebar"] .stButton button { background: transparent !important; border: 1px solid #2d4a6e !important; color: #94a3b8 !important; font-size: 12px; }
+    section[data-testid="stSidebar"] .stButton button:hover { color: white !important; border-color: #94a3b8 !important; }
+    div[data-testid="metric-container"] { background: white; border-radius:10px; padding:12px; }
+    .stTabs [data-baseweb="tab"] { font-size: 12px; }
+    .stTabs [data-baseweb="tab-list"] { background: white; border-radius: 8px; padding: 2px; gap: 2px; }
+    .stTabs [aria-selected="true"] { background: #1a2e4a !important; color: white !important; border-radius: 6px; }
+    .stSelectbox label { font-size: 12px; color: #64748b; }
+    .stExpander { background: white; border: 0.5px solid #e2e8f0 !important; border-radius: 8px !important; }
+    h1,h2,h3,h4 { color: #1a2e4a !important; font-weight: 700 !important; }
+    .stMarkdown hr { margin: 0.4rem 0; border-color: #e2e8f0; }
+    .stAlert { border-radius: 8px !important; }
+    p { font-size: 13px; }
 </style>""", unsafe_allow_html=True)
 
 SUPABASE_URL = st.secrets.get("SUPABASE_URL", "https://bddjuowbotsybamawsts.supabase.co")
@@ -103,15 +115,14 @@ def check_auth():
     if "ciclo_sel_id" not in st.session_state: st.session_state.ciclo_sel_id = None
 
 def login_screen():
-    st.markdown("""<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
-        min-height:80vh">
-        <div style="background:#1a2e4a;padding:8px 24px;border-radius:8px;margin-bottom:24px">
-            <span style="color:white;font-size:18px;font-weight:700">💼 Dashboard Venda Direta</span>
-        </div>
-    </div>""", unsafe_allow_html=True)
     _, col, _ = st.columns([1,1,1])
     with col:
-        nome = st.text_input("Seu nome")
+        st.markdown(
+            '<div style="background:#1a2e4a;border-radius:12px;padding:28px 24px;margin:40px 0 20px;text-align:center">'
+            '<div style="font-size:20px;font-weight:700;color:white;margin-bottom:4px">💼 Venda Direta</div>'
+            '<div style="font-size:12px;color:#94a3b8">Dashboard de Gestão</div>'
+            '</div>', unsafe_allow_html=True)
+        nome = st.text_input("Nome")
         senha = st.text_input("Senha", type="password")
         if st.button("Entrar", use_container_width=True, type="primary"):
             if not nome: st.error("Informe seu nome.")
@@ -246,16 +257,17 @@ def card_kpi(label, valor, subtexto=None, cor="#1a2e4a", delta=None):
     delta_html = ""
     if delta is not None:
         dc = "#16a34a" if delta>=0 else "#dc2626"
-        ds = f"{'▲' if delta>=0 else '▼'} {abs(delta):.1f}%"
-        delta_html = f'<span style="font-size:11px;color:{dc};font-weight:600">{ds}</span>'
+        ds = ("▲ " if delta>=0 else "▼ ") + f"{abs(delta):.1f}%"
+        delta_html = f'<div style="font-size:11px;color:{dc};font-weight:600;margin-top:3px">{ds}</div>'
     sub_html = f'<div style="font-size:11px;color:#94a3b8;margin-top:3px">{subtexto}</div>' if subtexto else ""
-    st.markdown(
-        f'<div style="background:white;border-radius:10px;padding:16px 18px;'
-        f'box-shadow:0 1px 3px rgba(0,0,0,0.08);border-top:3px solid {cor}">'
-        f'<div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">{label}</div>'
-        f'<div style="font-size:28px;font-weight:700;color:{cor};line-height:1">{valor}</div>'
-        f'{sub_html}{delta_html}</div>',
-        unsafe_allow_html=True)
+    html = (
+        f'<div style="background:white;border-radius:10px;padding:14px 16px;'
+        f'border-top:3px solid {cor};margin-bottom:2px">'
+        f'<div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">{label}</div>'
+        f'<div style="font-size:26px;font-weight:700;color:{cor};line-height:1">{valor}</div>'
+        f'{sub_html}{delta_html}</div>'
+    )
+    st.markdown(html, unsafe_allow_html=True)
 
 def semaforo_linha(pct, label, realizado_str, meta_str):
     cor="#94a3b8" if pct==0 else ("#16a34a" if pct>=100 else ("#d97706" if pct>=95 else "#dc2626"))
@@ -1067,19 +1079,25 @@ else:
     ciclos=get_ciclos()
     ciclo_ativo=get_ciclo_ativo()
     with st.sidebar:
-        st.markdown(f'<div style="padding:16px 0 8px"><span style="font-size:16px;font-weight:700;color:white">💼 Venda Direta</span></div>',unsafe_allow_html=True)
-        st.markdown(f'<div style="font-size:12px;color:#94a3b8;margin-bottom:16px">👤 {st.session_state.usuario} · {st.session_state.perfil}</div>',unsafe_allow_html=True)
-        # Seletor de ciclo global
+        iniciais = "".join([p[0].upper() for p in st.session_state.usuario.split()[:2]])
+        st.markdown(
+            f'<div style="padding:16px 8px 12px">'+
+            f'<div style="font-size:15px;font-weight:700;color:white;margin-bottom:12px">💼 Venda Direta</div>'+
+            f'<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#2d4a6e;border-radius:8px">'+
+            f'<div style="width:32px;height:32px;border-radius:50%;background:#F9A825;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#1a2e4a;flex-shrink:0">{iniciais}</div>'+
+            f'<div><div style="font-size:12px;font-weight:600;color:white">{st.session_state.usuario}</div>'+
+            f'<div style="font-size:10px;color:#94a3b8">{st.session_state.perfil}</div></div></div></div>',
+            unsafe_allow_html=True)
         if ciclos:
             nomes_ciclos=[c['nome'] for c in ciclos]
             idx_ativo=next((i for i,c in enumerate(ciclos) if c['ativo']),0)
             sel_nome=st.selectbox("Ciclo",nomes_ciclos,index=idx_ativo)
             ciclo_sel=next((c for c in ciclos if c['nome']==sel_nome),ciclo_ativo)
             st.session_state.ciclo_sel_id=ciclo_sel['id'] if ciclo_sel else None
-        st.markdown("---")
+        st.markdown("<hr style='border-color:#2d4a6e;margin:8px 0'>", unsafe_allow_html=True)
         pg=st.radio("",["🏠 Home","👥 Base","💼 Financeiro","🏪 ER","⚙️ Configurações"])
-        st.markdown("---")
-        if st.button("🚪 Sair",use_container_width=True):
+        st.markdown("<hr style='border-color:#2d4a6e;margin:8px 0'>", unsafe_allow_html=True)
+        if st.button("Sair",use_container_width=True):
             st.session_state.perfil=None; st.session_state.usuario=None; st.rerun()
     ciclo_id=st.session_state.get('ciclo_sel_id')
     if pg=="🏠 Home": pg_home(ciclo_id)
