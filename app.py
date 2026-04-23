@@ -1154,3 +1154,5 @@ else:
     elif pg=="💼 Financeiro": pg_financeiro(ciclo_id)
     elif pg=="🏪 ER": pg_er(ciclo_id)
     elif pg=="⚙️ Configurações": pg_config()
+
+
