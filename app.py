@@ -183,9 +183,9 @@ def processar_ciclo(dfs,metas_list,setores_list,cfg):
             resultados.append({'setor_id':sid,'tipo':'financeiro',**vals,'pct_multimarcas':round(pct_mu,2),'pct_cabelos':round(pct_cab_v,2),'pct_make':round(pct_mak_v,2),'pct_atividade':round(pct_at_v,2),'ativos':n_at,'inicios_reinicios':0,'pontuacao_obtida':round(po,2),'pontuacao_maxima':round(pm,2),'iaf':round(iaf,2),'classificacao':class_iaf(iaf,cfg)})
     base_res=[r for r in resultados if r['tipo']=='base']
     # Filtrar apenas setores que participam da meta do grupo
-    base_mg=[r for r in base_res if next((s for s in setores_list if s['id']==r['setor_id'] and s.get('meta_grupo',True)),None)]
+    base_mg=[r for r in base_res if next((s for s in setores_list if s['id']==r['setor_id'] and s.get('meta_grupo') is not False),None)]
     t_real=sum(r['inicios_reinicios'] for r in base_mg)
-    t_meta=sum(int(md.get(s['id'],{}).get('meta_inicios_reinicios',0)) for s in setores_list if s['tipo']=='base' and s.get('meta_grupo',True))
+    t_meta=sum(int(md.get(s['id'],{}).get('meta_inicios_reinicios',0)) for s in setores_list if s['tipo']=='base' and s.get('meta_grupo') is not False)
     gb=t_meta>0 and t_real>=t_meta
     for r in base_res:
         r['pontuacao_obtida']+=pts_g if gb else 0; r['pontuacao_maxima']+=pts_g
@@ -378,7 +378,7 @@ def pg_base(cid):
     res=[r for r in res_all if r['setor_id'] in ids_at]
     sid_nm={s['id']:s['nome'] for s in sb_list}
     # Separar setores que participam da meta do grupo
-    sb_mg=[s for s in sb_list if s.get('meta_grupo',True)]
+    sb_mg=[s for s in sb_list if s.get('meta_grupo') is not False]
     t_meta=sum(int(metas.get(s['id'],{}).get('meta_inicios_reinicios',0)) for s in sb_mg)
     t_real=sum(int(metas.get(s['id'],{}).get('realizado_inicios_reinicios',0)) for s in sb_mg)
     pct_g=t_real/t_meta*100 if t_meta>0 else 0
@@ -414,6 +414,7 @@ def pg_base(cid):
         # Mostrar apenas setores que participam da meta do grupo
         ids_mg={s['id'] for s in sb_mg}
         res_mg=[r for r in res_s if r['setor_id'] in ids_mg]
+
         html='<div style="background:white;border-radius:10px;border:1px solid #e2e8f0;padding:16px">'
         for pos,r in enumerate(res_mg,1):
             sid=r['setor_id']; meta=metas.get(sid,{})
@@ -733,11 +734,19 @@ def pg_config():
         sdb=sb.table("setores").select("*").order("nome").execute().data or []
         if not sdb: st.info("Faça o upload primeiro.")
         else:
+            # Cabeçalho
+            h1,h2,h3,h4,h5=st.columns([3,2,2,2,1])
+            h1.markdown('<span style="font-size:11px;color:#94a3b8;font-weight:700">SETOR</span>',unsafe_allow_html=True)
+            h2.markdown('<span style="font-size:11px;color:#94a3b8;font-weight:700">TIPO</span>',unsafe_allow_html=True)
+            h3.markdown('<span style="font-size:11px;color:#94a3b8;font-weight:700">STATUS</span>',unsafe_allow_html=True)
+            h4.markdown('<span style="font-size:11px;color:#94a3b8;font-weight:700">META GRUPO</span>',unsafe_allow_html=True)
+            st.markdown("<hr style='margin:4px 0;border-color:#e2e8f0'>",unsafe_allow_html=True)
             for s in sdb:
-                c1,c2,c3,c4,c5=st.columns([3,2,2,2,1]); c1.markdown(f"**{s['nome']}**")
-                with c2: ti=st.selectbox("Tipo",["financeiro","base"],index=0 if s['tipo']=='financeiro' else 1,key=f"t{s['id']}")
-                with c3: at=st.selectbox("Status",["Ativo","Inativo"],index=0 if s['ativo'] else 1,key=f"a{s['id']}")
-                with c4: mg=st.selectbox("Meta Grupo",["Sim","Não"],index=0 if s.get('meta_grupo',True) else 1,key=f"mg{s['id']}")
+                c1,c2,c3,c4,c5=st.columns([3,2,2,2,1])
+                c1.markdown(f'<div style="padding-top:8px;font-size:13px;font-weight:500">{s["nome"]}</div>',unsafe_allow_html=True)
+                with c2: ti=st.selectbox("",["financeiro","base"],index=0 if s['tipo']=='financeiro' else 1,key=f"t{s['id']}",label_visibility="collapsed")
+                with c3: at=st.selectbox("",["Ativo","Inativo"],index=0 if s['ativo'] else 1,key=f"a{s['id']}",label_visibility="collapsed")
+                with c4: mg=st.selectbox("",["Sim","Não"],index=0 if s.get('meta_grupo',True) else 1,key=f"mg{s['id']}",label_visibility="collapsed")
                 with c5:
                     if st.button("💾",key=f"s{s['id']}"): sb.table("setores").update({"tipo":ti,"ativo":at=="Ativo","meta_grupo":mg=="Sim"}).eq("id",s['id']).execute(); st.success("✓"); st.rerun()
     elif aba=="Pontuação & IAF":
