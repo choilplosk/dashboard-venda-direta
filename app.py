@@ -847,7 +847,9 @@ def pg_config():
                     cfg={r['chave']:r['valor'] for r in (sb.table("configuracoes").select("chave,valor").execute().data or [])}
                     rp=processar_ciclo(dfs,get_metas(ca['id']),get_setores(),cfg)
                     for r in rp['resultados']: r['ciclo_id']=ca['id']; sb.table("resultados").upsert(r,on_conflict="ciclo_id,setor_id").execute()
-                    for r in rp['resultados_er']: r['ciclo_id']=ca['id']; sb.table("resultados_er").upsert(r,on_conflict="ciclo_id,usuario_finalizacao").execute()
+                    # Deletar resultados_er antigos do ciclo antes de inserir novos
+                    sb.table("resultados_er").delete().eq("ciclo_id",ca['id']).execute()
+                    for r in rp['resultados_er']: r['ciclo_id']=ca['id']; sb.table("resultados_er").insert(r).execute()
                     ag=rp.get('ativos_unicos_global',0); st.session_state['ativos_unicos_global']=ag
                     def _uc(k,v):
                         ex=sb.table("configuracoes").select("id").eq("chave",k).execute()
