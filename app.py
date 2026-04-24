@@ -201,7 +201,8 @@ def processar_ciclo(dfs,metas_list,setores_list,cfg):
             er_res.append({'usuario_finalizacao':u,'total_pedidos':tot,'pedidos_nao_multimarca':nm,'pct_nao_multimarca':round(nm/tot*100 if tot>0 else 0,2)})
         er_res.sort(key=lambda x:x['pct_nao_multimarca'],reverse=True)
     ativos_unicos=int(df_at[df_at['ValorPraticado']>0]['CodigoRevendedora'].nunique()) if df_at is not None else 0
-    return {'resultados':resultados,'resultados_er':er_res,'t_real':t_real,'t_meta':t_meta,'ativos_unicos_global':ativos_unicos}
+    receita_ativos=float(df_at['ValorPraticado'].sum()) if df_at is not None else 0.0
+    return {'resultados':resultados,'resultados_er':er_res,'t_real':t_real,'t_meta':t_meta,'ativos_unicos_global':ativos_unicos,'receita_ativos':receita_ativos}
 
 # =============================================
 # COMPONENTES VISUAIS
@@ -286,7 +287,8 @@ def pg_home(cid):
     df=pd.DataFrame(res)
     fin=df[df['tipo']=='financeiro']; base=df[df['tipo']=='base']
     mc=['valor_boticario','valor_eudora','valor_oui','valor_qdb','valor_cabelos','valor_make']
-    receita=df[mc].sum().sum()
+    receita_supabase=float(get_config(f"receita_ativos_{cs['id']}",0) or 0)
+    receita=receita_supabase if receita_supabase>0 else df[mc].sum().sum()
     ativos_glob=int(get_config(f"ativos_unicos_{cs['id']}",0) or 0)
     sf=get_setores(tipo='financeiro'); ids_fin={s['id'] for s in sf}
     metas_h={m['setor_id']:m for m in get_metas(cs['id'])}
@@ -465,7 +467,8 @@ def pg_financeiro(cid):
     if not res: st.info("Sem dados para este ciclo."); return
     df_r=pd.DataFrame(res)
     mc=['valor_boticario','valor_eudora','valor_oui','valor_qdb','valor_cabelos','valor_make']
-    receita=sum(df_r[c].sum() for c in mc)
+    receita_supabase_fin=float(get_config(f"receita_ativos_{cs['id']}",0) or 0)
+    receita=receita_supabase_fin if receita_supabase_fin>0 else sum(df_r[c].sum() for c in mc)
     meta_rec=sum(float(metas.get(s['id'],{}).get(f'meta_{m}',0)) for s in sf_list for m in ['boticario','eudora','oui','qdb','cabelos','make'])
     meta_multi=sum(float(metas.get(s['id'],{}).get('meta_multimarcas',0)) for s in sf_list)/len(sf_list) if sf_list else 0
     meta_ativ=sum(float(metas.get(s['id'],{}).get('meta_atividade',0)) for s in sf_list)/len(sf_list) if sf_list else 0
@@ -856,6 +859,7 @@ def pg_config():
                         if ex.data: sb.table("configuracoes").update({"valor":str(v),"updated_by":usuario}).eq("chave",k).execute()
                         else: sb.table("configuracoes").insert({"chave":k,"valor":str(v),"updated_by":usuario}).execute()
                     _uc(f"ativos_unicos_{ca['id']}",ag)
+                    _uc(f"receita_ativos_{ca['id']}",rp.get('receita_ativos',0))
                     if 'ER' in dfs:
                         df_er_filtrado=dfs['ER'][(dfs['ER']['MeioCaptacao']=='VD+')&(dfs['ER']['SituaçãoComercial']=='Entregue')].copy()
                         st.session_state['df_er_raw']=df_er_filtrado
