@@ -182,8 +182,10 @@ def processar_ciclo(dfs,metas_list,setores_list,cfg):
             iaf=po/pm*100 if pm>0 else 0.0
             resultados.append({'setor_id':sid,'tipo':'financeiro',**vals,'pct_multimarcas':round(pct_mu,2),'pct_cabelos':round(pct_cab_v,2),'pct_make':round(pct_mak_v,2),'pct_atividade':round(pct_at_v,2),'ativos':n_at,'inicios_reinicios':0,'pontuacao_obtida':round(po,2),'pontuacao_maxima':round(pm,2),'iaf':round(iaf,2),'classificacao':class_iaf(iaf,cfg)})
     base_res=[r for r in resultados if r['tipo']=='base']
-    t_real=sum(r['inicios_reinicios'] for r in base_res)
-    t_meta=sum(int(md.get(s['id'],{}).get('meta_inicios_reinicios',0)) for s in setores_list if s['tipo']=='base')
+    # Filtrar apenas setores que participam da meta do grupo
+    base_mg=[r for r in base_res if next((s for s in setores_list if s['id']==r['setor_id'] and s.get('meta_grupo',True)),None)]
+    t_real=sum(r['inicios_reinicios'] for r in base_mg)
+    t_meta=sum(int(md.get(s['id'],{}).get('meta_inicios_reinicios',0)) for s in setores_list if s['tipo']=='base' and s.get('meta_grupo',True))
     gb=t_meta>0 and t_real>=t_meta
     for r in base_res:
         r['pontuacao_obtida']+=pts_g if gb else 0; r['pontuacao_maxima']+=pts_g
@@ -375,8 +377,10 @@ def pg_base(cid):
     ids_at={s['id'] for s in sb_list}
     res=[r for r in res_all if r['setor_id'] in ids_at]
     sid_nm={s['id']:s['nome'] for s in sb_list}
-    t_meta=sum(int(metas.get(s['id'],{}).get('meta_inicios_reinicios',0)) for s in sb_list)
-    t_real=sum(int(metas.get(s['id'],{}).get('realizado_inicios_reinicios',0)) for s in sb_list)
+    # Separar setores que participam da meta do grupo
+    sb_mg=[s for s in sb_list if s.get('meta_grupo',True)]
+    t_meta=sum(int(metas.get(s['id'],{}).get('meta_inicios_reinicios',0)) for s in sb_mg)
+    t_real=sum(int(metas.get(s['id'],{}).get('realizado_inicios_reinicios',0)) for s in sb_mg)
     pct_g=t_real/t_meta*100 if t_meta>0 else 0
     gb=t_meta>0 and t_real>=t_meta
     base_atual=int(get_config(f"base_atual_{cs['id']}",0) or 0)
@@ -407,8 +411,11 @@ def pg_base(cid):
     # Contribuição — tabela visual com barras
     if res and t_meta>0:
         st.markdown("#### 📊 Contribuição para Meta do Grupo")
+        # Mostrar apenas setores que participam da meta do grupo
+        ids_mg={s['id'] for s in sb_mg}
+        res_mg=[r for r in res_s if r['setor_id'] in ids_mg]
         html='<div style="background:white;border-radius:10px;border:1px solid #e2e8f0;padding:16px">'
-        for pos,r in enumerate(res_s,1):
+        for pos,r in enumerate(res_mg,1):
             sid=r['setor_id']; meta=metas.get(sid,{})
             real_ir=int(meta.get('realizado_inicios_reinicios',0)); contrib=real_ir/t_meta*100
             barra=min(contrib/100*100,100) if t_meta>0 else 0
@@ -423,6 +430,7 @@ def pg_base(cid):
                    f'<div style="width:42px;font-size:11px;font-weight:700;color:{cor_b};text-align:right">{contrib:.1f}%</div>'
                    f'</div>')
         total_pct=t_real/t_meta*100 if t_meta>0 else 0
+        # total já calculado sobre setores meta_grupo
         bg_t,tc_t=_cor_bg(total_pct)
         html+=(f'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0">'
                f'<div><div style="font-size:11px;color:#64748b">Total realizado vs meta do grupo</div>'
@@ -721,16 +729,17 @@ def pg_config():
     st.markdown("---")
     sb=get_sb(); usuario=st.session_state.get('usuario','sistema')
     if aba=="Setores":
-        st.caption("Setores detectados automaticamente no upload. Defina tipo e status.")
+        st.caption("Setores detectados automaticamente no upload. Defina tipo, status e participação na meta do grupo.")
         sdb=sb.table("setores").select("*").order("nome").execute().data or []
         if not sdb: st.info("Faça o upload primeiro.")
         else:
             for s in sdb:
-                c1,c2,c3,c4=st.columns([3,2,2,1]); c1.markdown(f"**{s['nome']}**")
+                c1,c2,c3,c4,c5=st.columns([3,2,2,2,1]); c1.markdown(f"**{s['nome']}**")
                 with c2: ti=st.selectbox("Tipo",["financeiro","base"],index=0 if s['tipo']=='financeiro' else 1,key=f"t{s['id']}")
                 with c3: at=st.selectbox("Status",["Ativo","Inativo"],index=0 if s['ativo'] else 1,key=f"a{s['id']}")
-                with c4:
-                    if st.button("💾",key=f"s{s['id']}"): sb.table("setores").update({"tipo":ti,"ativo":at=="Ativo"}).eq("id",s['id']).execute(); st.success("✓"); st.rerun()
+                with c4: mg=st.selectbox("Meta Grupo",["Sim","Não"],index=0 if s.get('meta_grupo',True) else 1,key=f"mg{s['id']}")
+                with c5:
+                    if st.button("💾",key=f"s{s['id']}"): sb.table("setores").update({"tipo":ti,"ativo":at=="Ativo","meta_grupo":mg=="Sim"}).eq("id",s['id']).execute(); st.success("✓"); st.rerun()
     elif aba=="Pontuação & IAF":
         st.caption("Ajuste pesos e faixas.")
         t1,t2,t3=st.tabs(["Pontuação Base","Pontuação Financeiro","Faixas & IAF"])
@@ -846,7 +855,7 @@ def pg_config():
                         if nm in dfs and 'Setor' in dfs[nm].columns:
                             for s in dfs[nm]['Setor'].dropna().unique(): se.add(str(s).strip())
                     ex_s={s['nome'] for s in (sb.table("setores").select("nome").execute().data or [])}
-                    for s in se-ex_s: sb.table("setores").insert({"nome":s,"tipo":"financeiro","ativo":True}).execute()
+                    for s in se-ex_s: sb.table("setores").insert({"nome":s,"tipo":"financeiro","ativo":True,"meta_grupo":True}).execute()
                     cfg={r['chave']:r['valor'] for r in (sb.table("configuracoes").select("chave,valor").execute().data or [])}
                     rp=processar_ciclo(dfs,get_metas(ca['id']),get_setores(),cfg)
                     for r in rp['resultados']: r['ciclo_id']=ca['id']; sb.table("resultados").upsert(r,on_conflict="ciclo_id,setor_id").execute()
