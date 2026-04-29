@@ -313,13 +313,10 @@ def pg_home(cid):
     pct_ativ=ativos_glob/total_base*100 if total_base>0 else 0
     pct_rec=receita/meta_rec*100 if meta_rec>0 else 0
     # Make e Cabelos: revendedores únicos de cada tabela ÷ total ativos global
-    make_global_raw=get_config(f"make_global_{cs['id']}","[]") or "[]"
-    cab_global_raw=get_config(f"cab_global_{cs['id']}","[]") or "[]"
-    try: make_global_codes=set(_json.loads(make_global_raw))
+    try: make_global_codes=set(_json.loads(get_config(f"make_global_{cs['id']}","[]") or "[]"))
     except: make_global_codes=set()
-    try: cab_global_codes=set(_json.loads(cab_global_raw))
+    try: cab_global_codes=set(_json.loads(get_config(f"cab_global_{cs['id']}","[]") or "[]"))
     except: cab_global_codes=set()
-    st.sidebar.caption(f"Debug — ativos:{ativos_glob} cab:{len(cab_global_codes)} make:{len(make_global_codes)}")
     pct_make=len(make_global_codes)/ativos_glob*100 if ativos_glob>0 and make_global_codes else (fin['pct_make'].mean() if len(fin)>0 else 0)
     pct_cab=len(cab_global_codes)/ativos_glob*100 if ativos_glob>0 and cab_global_codes else (fin['pct_cabelos'].mean() if len(fin)>0 else 0)
     meta_make=sum(float(metas_h.get(sid,{}).get('meta_pct_make',0)) for sid in ids_fin)/len(sf) if sf else 0
@@ -895,7 +892,6 @@ def pg_config():
                         else: sb.table("configuracoes").insert({"chave":k,"valor":str(v),"updated_by":usuario}).execute()
                     _uc(f"ativos_unicos_{ca['id']}",ag)
                     _uc(f"receita_ativos_{ca['id']}",rp.get('receita_ativos',0))
-                    st.info(f"ℹ️ Ativos únicos calculados: {ag} | Receita: R$ {rp.get('receita_ativos',0):,.2f}")
                     # Salvar códigos globais de Make e Cabelos
                     if 'Make' in dfs:
                         mk_all=[int(x) for x in dfs['Make'][dfs['Make']['ValorPraticado']>0]['CodigoRevendedora'].dropna().unique()]
@@ -1036,6 +1032,10 @@ else:
                 if st.button(label,key=f"nav_{label}",use_container_width=True):
                     st.session_state.pg_atual=label; st.rerun()
         st.markdown("<hr style='border-color:#334155;margin:8px 0'>",unsafe_allow_html=True)
+        if st.button("🔄 Atualizar dados",use_container_width=True):
+            get_sb.cache_clear()
+            st.cache_data.clear()
+            st.rerun()
         if st.button("Sair",use_container_width=True):
             try: get_sb().table("log_acessos").insert({"usuario":st.session_state.usuario,"perfil":st.session_state.perfil,"acao":"logout"}).execute()
             except: pass
