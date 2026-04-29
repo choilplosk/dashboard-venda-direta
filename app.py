@@ -896,10 +896,10 @@ def pg_config():
                     # Salvar códigos globais de Make e Cabelos
                     import json as _json2
                     if 'Make' in dfs:
-                        mk_all=[int(x) for x in dfs['Make']['CodigoRevendedora'].dropna().unique()]
+                        mk_all=[int(x) for x in dfs['Make'][dfs['Make']['ValorPraticado']>0]['CodigoRevendedora'].dropna().unique()]
                         _uc(f"make_global_{ca['id']}",_json2.dumps(mk_all))
                     if 'Cabelos' in dfs:
-                        cb_all=[int(x) for x in dfs['Cabelos']['CodigoRevendedora'].dropna().unique()]
+                        cb_all=[int(x) for x in dfs['Cabelos'][dfs['Cabelos']['ValorPraticado']>0]['CodigoRevendedora'].dropna().unique()]
                         _uc(f"cab_global_{ca['id']}",_json2.dumps(cb_all))
                     if 'ER' in dfs:
                         df_er_filtrado=dfs['ER'][(dfs['ER']['MeioCaptacao']=='VD+')&(dfs['ER']['SituaçãoComercial']=='Entregue')].copy()
