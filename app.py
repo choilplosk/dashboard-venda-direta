@@ -890,14 +890,14 @@ def pg_config():
                         else: sb.table("configuracoes").insert({"chave":k,"valor":str(v),"updated_by":usuario}).execute()
                     _uc(f"ativos_unicos_{ca['id']}",ag)
                     _uc(f"receita_ativos_{ca['id']}",rp.get('receita_ativos',0))
+                    st.info(f"ℹ️ Ativos únicos calculados: {ag} | Receita: R$ {rp.get('receita_ativos',0):,.2f}")
                     # Salvar códigos globais de Make e Cabelos
-                    import json as _json2
                     if 'Make' in dfs:
                         mk_all=[int(x) for x in dfs['Make'][dfs['Make']['ValorPraticado']>0]['CodigoRevendedora'].dropna().unique()]
-                        _uc(f"make_global_{ca['id']}",_json2.dumps(mk_all))
+                        _uc(f"make_global_{ca['id']}",_json.dumps(mk_all))
                     if 'Cabelos' in dfs:
                         cb_all=[int(x) for x in dfs['Cabelos'][dfs['Cabelos']['ValorPraticado']>0]['CodigoRevendedora'].dropna().unique()]
-                        _uc(f"cab_global_{ca['id']}",_json2.dumps(cb_all))
+                        _uc(f"cab_global_{ca['id']}",_json.dumps(cb_all))
                     if 'ER' in dfs:
                         df_er_filtrado=dfs['ER'][(dfs['ER']['MeioCaptacao']=='VD+')&(dfs['ER']['SituaçãoComercial']=='Entregue')].copy()
                         st.session_state['df_er_raw']=df_er_filtrado
