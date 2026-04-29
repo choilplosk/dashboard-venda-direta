@@ -664,7 +664,7 @@ def pg_er(cid):
             st.markdown(f'<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:{bg};border-radius:8px;border:1px solid {tc}22;margin-bottom:4px"><div style="min-width:26px;height:26px;border-radius:50%;background:{pb};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:{pt}">{pos_n}</div><span style="flex:1;font-size:13px;font-weight:600;color:#0f172a">{row["usuario_finalizacao"]}</span><span style="font-size:12px;color:{tc}88">{n_ped} pedidos</span><span style="font-size:15px;font-weight:700;color:{tc}">{ic} {fmt_pct(v)}</span></div>',unsafe_allow_html=True)
     with tab_m: rank_caixa(df,'pct_multi')
     with tab_c:
-        rank_cab=_jj.loads(get_config(f"er_rank_cab_{cs['id']}","[]") or "[]")
+        rank_cab=_json.loads(get_config(f"er_rank_cab_{cs['id']}","[]") or "[]")
         if rank_cab:
             for pos,row in enumerate(sorted(rank_cab,key=lambda x:x['pct_cab'],reverse=True),1):
                 v=row['pct_cab']; bg,tc=_cor_bg(v)
@@ -673,7 +673,7 @@ def pg_er(cid):
                 st.markdown(f'<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:{bg};border-radius:8px;border:1px solid {tc}22;margin-bottom:4px"><div style="min-width:26px;height:26px;border-radius:50%;background:{pb};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:{pt}">{pos}</div><span style="flex:1;font-size:13px;font-weight:600;color:#0f172a">{row["usuario"]}</span><span style="font-size:12px;color:{tc}88">{int(row["n_cab"])} pedidos</span><span style="font-size:15px;font-weight:700;color:{tc}">{ic} {fmt_pct(v)}</span></div>',unsafe_allow_html=True)
         else: st.info("Reprocesse os dados para ver este ranking.")
     with tab_mk:
-        rank_mak=_jj.loads(get_config(f"er_rank_mak_{cs['id']}","[]") or "[]")
+        rank_mak=_json.loads(get_config(f"er_rank_mak_{cs['id']}","[]") or "[]")
         if rank_mak:
             for pos,row in enumerate(sorted(rank_mak,key=lambda x:x['pct_mak'],reverse=True),1):
                 v=row['pct_mak']; bg,tc=_cor_bg(v)
@@ -683,10 +683,9 @@ def pg_er(cid):
         else: st.info("Reprocesse os dados para ver este ranking.")
     st.markdown("")
     # Carregar dados agregados do Supabase
-    import json as _jj
-    bairro_data=_jj.loads(get_config(f"er_bairro_{cs['id']}","[]") or "[]")
-    seg_data=_jj.loads(get_config(f"er_seg_{cs['id']}","[]") or "[]")
-    freq_data=_jj.loads(get_config(f"er_freq_{cs['id']}","[]") or "[]")
+    bairro_data=_json.loads(get_config(f"er_bairro_{cs['id']}","[]") or "[]")
+    seg_data=_json.loads(get_config(f"er_seg_{cs['id']}","[]") or "[]")
+    freq_data=_json.loads(get_config(f"er_freq_{cs['id']}","[]") or "[]")
 
     if bairro_data or seg_data:
         col_a,col_b=st.columns(2)
@@ -904,14 +903,13 @@ def pg_config():
                         st.session_state['df_er_raw']=df_er_filtrado
                         # Salvar dados agregados do ER no Supabase
                         try:
-                            import json as _jj
                             total_rev_er=df_er_filtrado['Pessoa'].nunique()
                             # Bairro
                             df_b=df_er_filtrado.copy(); df_b['Bairro']=df_b['Bairro'].str.upper().str.strip()
                             br=df_b.groupby('Bairro')['Pessoa'].nunique().reset_index()
                             br['pct']=round(br['Pessoa']/total_rev_er*100,1)
                             br_list=br.rename(columns={'Pessoa':'rvs'}).sort_values('rvs',ascending=False).to_dict('records')
-                            _uc(f"er_bairro_{ca['id']}",_jj.dumps(br_list))
+                            _uc(f"er_bairro_{ca['id']}",_json.dumps(br_list))
                             # Segmentação
                             sr=df_er_filtrado.groupby('Papel')['Pessoa'].nunique().reset_index()
                             sr['pct']=round(sr['Pessoa']/total_rev_er*100,1)
@@ -920,7 +918,7 @@ def pg_config():
                             tk_map={r['Papel']:float(r['ticket']) for _,r in tk.iterrows()}
                             sr['ticket']=sr['Papel'].map(tk_map)
                             seg_list=sr.rename(columns={'Papel':'seg','Pessoa':'rvs'}).sort_values('rvs',ascending=False).to_dict('records')
-                            _uc(f"er_seg_{ca['id']}",_jj.dumps(seg_list))
+                            _uc(f"er_seg_{ca['id']}",_json.dumps(seg_list))
                             # Frequência por dia
                             dias_pt={0:'Segunda',1:'Terça',2:'Quarta',3:'Quinta',4:'Sexta',5:'Sábado',6:'Domingo'}
                             df_er_filtrado['DataCap']=pd.to_datetime(df_er_filtrado['Data Captação'],dayfirst=True,errors='coerce')
@@ -928,20 +926,20 @@ def pg_config():
                             freq=freq.dropna(subset=['DataCap']).sort_values('DataCap')
                             freq['label']=freq['DataCap'].dt.strftime('%d/%m')+'('+freq['DataCap'].dt.dayofweek.map(dias_pt)+')'
                             freq_list=[{'label':r['label'],'rvs':int(r['Pessoa'])} for _,r in freq.iterrows()]
-                            _uc(f"er_freq_{ca['id']}",_jj.dumps(freq_list))
+                            _uc(f"er_freq_{ca['id']}",_json.dumps(freq_list))
                             # Rankings cabelos e make por caixa
                             if 'Cabelos' in dfs:
                                 cab_set=set(int(x) for x in dfs['Cabelos'][dfs['Cabelos']['ValorPraticado']>0]['CodigoRevendedora'].dropna().unique())
                                 df_er_filtrado['is_cab']=df_er_filtrado['Pessoa'].isin(cab_set)
                                 cr=df_er_filtrado.groupby('Usuario de Finalização').agg(total=('Pessoa','count'),n_cab=('is_cab','sum')).reset_index()
                                 cr['pct_cab']=round(cr['n_cab']/cr['total']*100,1)
-                                _uc(f"er_rank_cab_{ca['id']}",_jj.dumps(cr.rename(columns={'Usuario de Finalização':'usuario'}).to_dict('records')))
+                                _uc(f"er_rank_cab_{ca['id']}",_json.dumps(cr.rename(columns={'Usuario de Finalização':'usuario'}).to_dict('records')))
                             if 'Make' in dfs:
                                 make_set=set(int(x) for x in dfs['Make'][dfs['Make']['ValorPraticado']>0]['CodigoRevendedora'].dropna().unique())
                                 df_er_filtrado['is_mak']=df_er_filtrado['Pessoa'].isin(make_set)
                                 mr=df_er_filtrado.groupby('Usuario de Finalização').agg(total=('Pessoa','count'),n_mak=('is_mak','sum')).reset_index()
                                 mr['pct_mak']=round(mr['n_mak']/mr['total']*100,1)
-                                _uc(f"er_rank_mak_{ca['id']}",_jj.dumps(mr.rename(columns={'Usuario de Finalização':'usuario'}).to_dict('records')))
+                                _uc(f"er_rank_mak_{ca['id']}",_json.dumps(mr.rename(columns={'Usuario de Finalização':'usuario'}).to_dict('records')))
                         except Exception as e_agg: st.warning(f"⚠️ Dados ER agregados não salvos: {e_agg}")
                     if 'Make' in dfs: st.session_state['df_make_raw']=dfs['Make']
                     if 'Cabelos' in dfs: st.session_state['df_cab_raw']=dfs['Cabelos']
