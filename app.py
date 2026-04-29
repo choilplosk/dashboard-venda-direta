@@ -1033,8 +1033,7 @@ else:
                     st.session_state.pg_atual=label; st.rerun()
         st.markdown("<hr style='border-color:#334155;margin:8px 0'>",unsafe_allow_html=True)
         if st.button("🔄 Atualizar dados",use_container_width=True):
-            get_sb.cache_clear()
-            st.cache_data.clear()
+            st.cache_resource.clear()
             st.rerun()
         if st.button("Sair",use_container_width=True):
             try: get_sb().table("log_acessos").insert({"usuario":st.session_state.usuario,"perfil":st.session_state.perfil,"acao":"logout"}).execute()
