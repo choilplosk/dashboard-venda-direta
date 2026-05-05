@@ -1030,8 +1030,8 @@ def pg_config():
                             df_er_v=df_er_v.merge(vend_map,on='ped_norm',how='left')
                             # CPF sets para conversão
                             multi_set=set(int(x) for x in dfm[dfm['is_multimarca']]['CodigoRevendedora'].dropna().unique()) if 'Ativos' in dfs else set()
-                            mak_set=set(int(x) for x in dfs['Make']['CodigoRevendedora'].dropna().unique()) if 'Make' in dfs else set()
-                            cab_set=set(int(x) for x in dfs['Cabelos']['CodigoRevendedora'].dropna().unique()) if 'Cabelos' in dfs else set()
+                            mak_set=set(int(x) for x in dfs['Make'][dfs['Make']['ValorPraticado']>0]['CodigoRevendedora'].dropna().unique()) if 'Make' in dfs else set()
+                            cab_set=set(int(x) for x in dfs['Cabelos'][dfs['Cabelos']['ValorPraticado']>0]['CodigoRevendedora'].dropna().unique()) if 'Cabelos' in dfs else set()
                             df_er_v['is_multi']=df_er_v['Pessoa'].isin(multi_set)
                             df_er_v['is_mak']=df_er_v['Pessoa'].isin(mak_set)
                             df_er_v['is_cab']=df_er_v['Pessoa'].isin(cab_set)
@@ -1058,14 +1058,14 @@ def pg_config():
                             nao_conv=[]
                             df_com_vend=df_er_v[df_er_v['Vendedor'].notna()]
                             for pessoa in df_com_vend['Pessoa'].dropna().unique():
-                                try: cpf=int(float(str(pessoa).strip()))
+                                try: cpf=int(pessoa)
                                 except: continue
                                 vends=list(df_com_vend[df_com_vend['Pessoa']==pessoa]['Vendedor'].dropna().unique())
                                 if not vends: continue
                                 rv=rv_nome_map.get(cpf,str(cpf))
-                                if cpf not in multi_set: nao_conv.append({'tipo':'multi','revendedor':str(rv),'vendedores':[str(v) for v in vends]})
                                 if cpf not in cab_set: nao_conv.append({'tipo':'cab','revendedor':str(rv),'vendedores':[str(v) for v in vends]})
                                 if cpf not in mak_set: nao_conv.append({'tipo':'make','revendedor':str(rv),'vendedores':[str(v) for v in vends]})
+                                if cpf not in multi_set: nao_conv.append({'tipo':'multi','revendedor':str(rv),'vendedores':[str(v) for v in vends]})
                             _uc(f"er_nao_conv_{ca['id']}",_json.dumps(nao_conv,ensure_ascii=False),usuario)
                         except Exception as e_v: st.warning(f"⚠️ Dados Vendedor: {e_v}")
                     for nm in uploaded: log_upload(ca['id'],nm,usuario)
