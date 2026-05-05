@@ -237,7 +237,7 @@ def card_home(label, valor, meta_str=None, pct=0, delta=None, info=False):
         delta_html=f'<div style="font-size:11px;color:{dc};margin-top:2px">{"▲" if delta>=0 else "▼"} {abs(delta):.1f}%</div>'
     meta_html=f'<div style="font-size:11px;color:{tc};opacity:0.75;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{meta_str}</div>' if meta_str else ""
     pct_html=f'<div style="font-size:11px;color:{tc};font-weight:600;margin-top:1px">{pct:.0f}% atingido</div>' if not info and pct>0 else ""
-    return (f'<div style="border:1px solid {border};border-radius:12px;padding:14px 16px;background:{bg};height:100px;box-sizing:border-box;overflow:hidden">'
+    return (f'<div style="border:1px solid {border};border-radius:12px;padding:14px 16px;background:{bg};min-height:95px;box-sizing:border-box">'
             f'<div style="font-size:10px;color:{tc};opacity:0.7;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{label}</div>'
             f'<div style="font-size:20px;font-weight:700;color:{tc};line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{valor}</div>'
             f'{meta_html}{pct_html}{delta_html}</div>')
@@ -395,19 +395,19 @@ def pg_base(cid):
     bg_gb="#f0fdf4" if gb else "#fef2f2"; tc_gb="#166534" if gb else "#991b1b"
     bg_gap="#f0fdf4" if gap>=0 else "#fef2f2"; tc_gap="#166534" if gap>=0 else "#991b1b"
     st.markdown(f'''<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px;margin-top:8px">
-    <div style="border:1px solid {tc_g}44;border-radius:12px;padding:16px;background:{bg_g};height:90px;box-sizing:border-box;overflow:hidden">
+    <div style="border:1px solid {tc_g}44;border-radius:12px;padding:16px;background:{bg_g};min-height:85px;box-sizing:border-box">
         <div style="font-size:10px;color:{tc_g};opacity:0.7;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Meta do Grupo</div>
         <div style="font-size:22px;font-weight:700;color:{tc_g}">{t_real} / {t_meta}</div>
         <div style="font-size:11px;color:{tc_g};opacity:0.7;margin-top:4px">{fmt_pct(pct_g)} atingido</div></div>
-    <div style="border:1px solid {tc_gb}44;border-radius:12px;padding:16px;background:{bg_gb};height:90px;box-sizing:border-box;overflow:hidden">
+    <div style="border:1px solid {tc_gb}44;border-radius:12px;padding:16px;background:{bg_gb};min-height:85px;box-sizing:border-box">
         <div style="font-size:10px;color:{tc_gb};opacity:0.7;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Bônus Grupo</div>
         <div style="font-size:16px;font-weight:700;color:{tc_gb}">{"✅ Conquistado" if gb else "❌ Não conquistado"}</div>
         <div style="font-size:11px;color:{tc_gb};opacity:0.7;margin-top:4px">{"+200 pts para todas" if gb else f"Faltam {t_meta-t_real}"}</div></div>
-    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;height:90px;box-sizing:border-box;overflow:hidden">
+    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;min-height:85px;box-sizing:border-box">
         <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Base Atual</div>
         <div style="font-size:22px;font-weight:700;color:#1e293b">{fmt_int(base_atual)}</div>
         <div style="font-size:11px;color:#94a3b8;margin-top:4px">Meta PEF: {fmt_int(base_pef)}</div></div>
-    <div style="border:1px solid {tc_gap}44;border-radius:12px;padding:16px;background:{bg_gap};height:90px;box-sizing:border-box;overflow:hidden">
+    <div style="border:1px solid {tc_gap}44;border-radius:12px;padding:16px;background:{bg_gap};min-height:85px;box-sizing:border-box">
         <div style="font-size:10px;color:{tc_gap};opacity:0.7;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Gap / Bônus</div>
         <div style="font-size:22px;font-weight:700;color:{tc_gap}">{("+" if gap>=0 else "")}{fmt_int(gap)}</div>
         <div style="font-size:11px;color:{tc_gap};opacity:0.7;margin-top:4px">base atual - meta PEF</div></div>
@@ -479,6 +479,7 @@ def pg_financeiro(cid):
         })
     df_tab=pd.DataFrame(rows).sort_values('IAF',ascending=False)
     iaf_tag='<span style="background:#1e3a5f;color:#93c5fd;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;margin-left:4px">IAF</span>'
+    import streamlit.components.v1 as _comp
     html='<div style="overflow-x:auto"><table id="fin-table" style="width:100%;border-collapse:collapse;min-width:900px">'
     html+=f'<thead><tr style="border-bottom:1px solid #e2e8f0">'
     headers=[('Supervisora','left'),('IAF'+iaf_tag,'center'),('Boticário'+iaf_tag,'center'),('Eudora'+iaf_tag,'center'),('OUI R$','center'),('QDB R$','center'),('Multimarcas'+iaf_tag,'center'),('Penet. Cab'+iaf_tag,'center'),('Penet. Make'+iaf_tag,'center'),('Atividade'+iaf_tag,'center')]
@@ -496,8 +497,8 @@ def pg_financeiro(cid):
         html+=(f'<tr style="border-bottom:1px solid #f1f5f9">'
                f'<td style="padding:10px;color:#0f172a;font-weight:500;font-size:13px;white-space:nowrap">{r["Supervisora"]} {cl_badge}</td>'
                f'<td style="padding:10px;text-align:center;color:{ic};font-weight:700;font-size:14px">{fmt_pct(r["IAF"])}</td>'
-               f'<td style="padding:10px;text-align:center;color:{pct_color(r["Bot%"],100)};font-size:12px">{fmt_pct(r["Bot%"])}</td>'
-               f'<td style="padding:10px;text-align:center;color:{pct_color(r["Eud%"],100)};font-size:12px">{fmt_pct(r["Eud%"])}</td>'
+               f'<td style="padding:10px;text-align:center;color:{pct_color(r["Bot%"],100)};font-size:12px;font-weight:600">{fmt_pct(r["Bot%"])}</td>'
+               f'<td style="padding:10px;text-align:center;color:{pct_color(r["Eud%"],100)};font-size:12px;font-weight:600">{fmt_pct(r["Eud%"])}</td>'
                f'<td style="padding:10px;text-align:center;color:#475569;font-size:12px">{fmt_moeda(r["OUI_R"])}</td>'
                f'<td style="padding:10px;text-align:center;color:#475569;font-size:12px">{fmt_moeda(r["QDB_R"])}</td>'
                f'<td style="padding:10px;text-align:center;color:{pct_color(r["Multi%"],r["Multi_meta"])};font-size:12px">{fmt_pct(r["Multi%"])}</td>'
@@ -526,7 +527,7 @@ function sortTable(col){
   for(var i=0;i<10;i++){var el=document.getElementById("arr"+i);if(el)el.textContent=i===col?(sortDir[col]?"↑":"↓"):"↕";}
 }
 </script>'''
-    st.markdown(html,unsafe_allow_html=True)
+    _comp.html(html,height=max(400,len(rows)*52+100),scrolling=True)
     # Gráfico evolução Ativos
     st.markdown("<div style='height:24px'></div>",unsafe_allow_html=True)
     st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">Evolução de Ativos por Ciclo</p>',unsafe_allow_html=True)
@@ -563,7 +564,7 @@ def pg_iaf(cid):
     ]
     html='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px">'
     for cl,em,bg,tc in card_cls:
-        html+=(f'<div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px;background:{bg};text-align:center;height:90px;box-sizing:border-box">'
+        html+=(f'<div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px;background:{bg};text-align:center;min-height:85px;box-sizing:border-box">'
                f'<div style="font-size:10px;color:{tc};text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">{cl}</div>'
                f'<div style="font-size:28px;font-weight:700;color:{tc}">{contagem.get(cl,0)}</div>'
                f'<div style="font-size:11px;color:{tc}88;margin-top:4px">{em}</div></div>')
@@ -575,9 +576,12 @@ def pg_iaf(cid):
     faixas={'Diamante':float(cfg.get('faixa_diamante_min',95)),'Ouro':float(cfg.get('faixa_ouro_min',85)),'Prata':float(cfg.get('faixa_prata_min',75)),'Bronze':float(cfg.get('faixa_bronze_min',65))}
     ordem_faixas=['Diamante','Ouro','Prata','Bronze']
     def gap_prox(iaf,cl,pts,mx):
-        idx=ordem_faixas.index(cl) if cl in ordem_faixas else -1
-        if idx<=0: return None
-        prox_faixa=ordem_faixas[idx-1]
+        if cl=='Diamante': return None  # already at top
+        if cl in ordem_faixas:
+            idx=ordem_faixas.index(cl)
+            prox_faixa=ordem_faixas[idx-1]  # next level up
+        else:
+            prox_faixa='Bronze'  # Não Classificado -> Bronze
         pts_needed=int(faixas[prox_faixa]/100*mx)-pts
         return pts_needed if pts_needed>0 else None
     html_rank='<table style="width:100%;border-collapse:collapse">'
@@ -597,8 +601,8 @@ def pg_iaf(cid):
         gap_pts=gap_prox(r['iaf'],r['classificacao'],pts,mx)
         gap_str=f'+{gap_pts} pts' if gap_pts else '—'
         gap_c='#64748b' if not gap_pts else ('#16a34a' if gap_pts<=30 else '#d97706' if gap_pts<=80 else '#dc2626')
-        pos_bg=["#f59e0b","#94a3b8","#92400e"][pos-1] if pos<=3 else "#1e293b"
-        pos_tc="black" if pos==1 else "white"
+        pos_bg=["#f59e0b","#94a3b8","#92400e"][pos-1] if pos<=3 else "#e2e8f0"
+        pos_tc="black" if pos==1 else ("white" if pos<=3 else "#475569")
         html_rank+=(f'<tr style="border-bottom:1px solid #f1f5f9">'
                     f'<td style="padding:10px"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:{pos_bg};color:{pos_tc};font-size:11px;font-weight:700;margin-right:10px">{pos}</span>'
                     f'<span style="color:#0f172a;font-weight:500;font-size:13px">{nm}</span></td>'
@@ -643,19 +647,19 @@ def pg_er(cid):
     pct_cab_er=rev_cab/rev_er*100 if rev_er>0 else 0
     # KPIs
     html_kpi=f'''<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
-    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;height:90px;box-sizing:border-box;overflow:hidden">
+    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;min-height:85px;box-sizing:border-box">
         <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Ativos no ER</div>
         <div style="font-size:22px;font-weight:700;color:#1e293b">{fmt_int(rev_er)}</div>
         <div style="font-size:11px;color:#94a3b8;margin-top:4px">× {fmt_int(total_ativos)} ativos total</div></div>
-    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;height:90px;box-sizing:border-box;overflow:hidden">
+    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;min-height:85px;box-sizing:border-box">
         <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">No. RV. Multimarcas</div>
         <div style="font-size:22px;font-weight:700;color:#1e293b">{fmt_int(rev_multi)}</div>
         <div style="font-size:11px;color:#94a3b8;margin-top:4px">dentre os que vieram ao ER</div></div>
-    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;height:90px;box-sizing:border-box;overflow:hidden">
+    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;min-height:85px;box-sizing:border-box">
         <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Compraram Make</div>
         <div style="font-size:18px;font-weight:700;color:#1e293b">{fmt_int(rev_make)} ({fmt_pct(pct_make_er)})</div>
         <div style="font-size:11px;color:#94a3b8;margin-top:4px">de {fmt_int(rev_er)} no ER</div></div>
-    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;height:90px;box-sizing:border-box;overflow:hidden">
+    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;min-height:85px;box-sizing:border-box">
         <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Compraram Cabelos</div>
         <div style="font-size:18px;font-weight:700;color:#1e293b">{fmt_int(rev_cab)} ({fmt_pct(pct_cab_er)})</div>
         <div style="font-size:11px;color:#94a3b8;margin-top:4px">de {fmt_int(rev_er)} no ER</div></div>
@@ -663,6 +667,10 @@ def pg_er(cid):
     st.markdown(html_kpi,unsafe_allow_html=True)
     # Ranking multimarca
     st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">Ranking por Caixa</p>',unsafe_allow_html=True)
+    st.markdown('''<style>
+    .stTabs [data-baseweb="tab"][aria-selected="true"] { background: #2563eb !important; color: white !important; }
+    .stTabs [data-baseweb="tab"] { color: #475569 !important; }
+    </style>''',unsafe_allow_html=True)
     df['pedidos_multi']=df['total_pedidos']-df['pedidos_nao_multimarca']
     df['pct_multi']=100-df['pct_nao_multimarca']
     tab_m,tab_c,tab_mk=st.tabs(["Multimarcas","Cabelos","Make"])
@@ -701,24 +709,24 @@ def pg_er(cid):
         html_v='<table style="width:100%;border-collapse:collapse">'
         html_v+=('<thead><tr style="border-bottom:1px solid #e2e8f0">'
                  '<th style="text-align:left;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Vendedor</th>'
-                 '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Atendidos</th>'
-                 '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Multimarcas</th>'
-                 '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Cabelos</th>'
-                 '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Make</th>'
-                 '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Ticket Méd.</th>'
+                 '<th style="text-align:center;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Atendidos</th>'
+                 '<th style="text-align:center;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Multimarcas</th>'
+                 '<th style="text-align:center;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Cabelos</th>'
+                 '<th style="text-align:center;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Make</th>'
+                 '<th style="text-align:center;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Ticket Méd.</th>'
                  '</tr></thead><tbody>')
         for v in sorted(vend_data,key=lambda x:x.get('atendidos',0),reverse=True):
             nm=v.get('vendedor','—'); at=int(v.get('atendidos',0))
             pmu=float(v.get('pct_multi',0)); pcb=float(v.get('pct_cab',0)); pmk=float(v.get('pct_make',0))
             tk=float(v.get('ticket',0))
-            def cc(p): return '#4ade80' if p>=70 else ('#fbbf24' if p>=50 else '#f87171')
+            def cc(p): return '#166534' if p>=70 else ('#854d0e' if p>=50 else '#991b1b')
             html_v+=(f'<tr style="border-bottom:1px solid #f1f5f9">'
                      f'<td style="padding:10px;color:#0f172a;font-weight:500;font-size:13px">{nm}</td>'
-                     f'<td style="padding:10px;text-align:right;color:#94a3b8;font-size:13px">{at}</td>'
-                     f'<td style="padding:10px;text-align:right;color:{cc(pmu)};font-size:13px;font-weight:600">{fmt_pct(pmu)}</td>'
-                     f'<td style="padding:10px;text-align:right;color:{cc(pcb)};font-size:13px;font-weight:600">{fmt_pct(pcb)}</td>'
-                     f'<td style="padding:10px;text-align:right;color:{cc(pmk)};font-size:13px;font-weight:600">{fmt_pct(pmk)}</td>'
-                     f'<td style="padding:10px;text-align:right;color:#64748b;font-size:12px">{fmt_moeda(tk)}</td>'
+                     f'<td style="padding:10px;text-align:center;color:#94a3b8;font-size:13px">{at}</td>'
+                     f'<td style="padding:10px;text-align:center;color:{cc(pmu)};font-size:13px;font-weight:600">{fmt_pct(pmu)}</td>'
+                     f'<td style="padding:10px;text-align:center;color:{cc(pcb)};font-size:13px;font-weight:600">{fmt_pct(pcb)}</td>'
+                     f'<td style="padding:10px;text-align:center;color:{cc(pmk)};font-size:13px;font-weight:600">{fmt_pct(pmk)}</td>'
+                     f'<td style="padding:10px;text-align:center;color:#64748b;font-size:12px">{fmt_moeda(tk)}</td>'
                      f'</tr>')
         html_v+='</tbody></table>'
         st.markdown(html_v,unsafe_allow_html=True)
@@ -726,6 +734,10 @@ def pg_er(cid):
         st.markdown("<div style='height:16px'></div>",unsafe_allow_html=True)
         st.markdown('<p style="color:#f87171;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">⚠️ Revendedores não convertidos — vendedores responsáveis</p>',unsafe_allow_html=True)
         nao_conv=_json.loads(get_config(f"er_nao_conv_{cs['id']}","[]") or "[]")
+        nc_multi=[x for x in nao_conv if x.get('tipo')=='multi']
+        nc_cab=[x for x in nao_conv if x.get('tipo')=='cab']
+        nc_mak=[x for x in nao_conv if x.get('tipo')=='make']
+        st.markdown(f'<span style="color:#64748b;font-size:11px">Multimarcas: {len(nc_multi)} | Cabelos: {len(nc_cab)} | Make: {len(nc_mak)}</span>',unsafe_allow_html=True)
         if nao_conv:
             tab_nm,tab_nc,tab_nmk=st.tabs(["Multimarcas","Cabelos","Make"])
             def tabela_nao_conv(dados,key):
@@ -743,9 +755,6 @@ def pg_er(cid):
                               f'</tr>')
                 html_nc+='</tbody></table>'
                 st.markdown(html_nc,unsafe_allow_html=True)
-            nc_multi=[x for x in nao_conv if x.get('tipo')=='multi']
-            nc_cab=[x for x in nao_conv if x.get('tipo')=='cab']
-            nc_mak=[x for x in nao_conv if x.get('tipo')=='make']
             with tab_nm: tabela_nao_conv(nc_multi,'multi')
             with tab_nc: tabela_nao_conv(nc_cab,'cab')
             with tab_nmk: tabela_nao_conv(nc_mak,'make')
