@@ -4,33 +4,43 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import json as _json
+import hashlib
 
 st.set_page_config(page_title="Dashboard Venda Direta", page_icon="💼", layout="wide")
 
 st.markdown("""<style>
-    .stApp { background: #ffffff; }
+    .stApp { background: #000000; }
     .block-container { padding-top: 1.2rem; padding-left: 1.5rem; padding-right: 1.5rem; padding-bottom: 2rem; }
-    [data-testid="stSidebar"] { background-color: #1e293b !important; min-width: 220px; }
-    [data-testid="stSidebar"] > div { background-color: #1e293b !important; }
+    [data-testid="stSidebar"] { background-color: #0a0a0a !important; min-width: 220px; border-right: 1px solid #1a1a1a; }
+    [data-testid="stSidebar"] > div { background-color: #0a0a0a !important; }
     [data-testid="stSidebar"] label, [data-testid="stSidebar"] p,
-    [data-testid="stSidebar"] span, [data-testid="stSidebar"] div { color: #94a3b8 !important; }
+    [data-testid="stSidebar"] span, [data-testid="stSidebar"] div { color: #64748b !important; }
     [data-testid="stSidebar"] .stButton > button {
         background: transparent !important; border: none !important;
-        color: #94a3b8 !important; text-align: left !important;
+        color: #64748b !important; text-align: left !important;
         padding: 9px 14px !important; border-radius: 8px !important;
         font-size: 13px !important; width: 100% !important; }
-    [data-testid="stSidebar"] .stButton > button:hover { background: #334155 !important; color: #f1f5f9 !important; }
-    [data-testid="stSidebar"] .stSelectbox div { background: #334155 !important; border: none !important; }
-    h1 { color: #0f172a !important; font-weight: 700 !important; font-size: 24px !important; }
-    h2, h3, h4 { color: #1e293b !important; font-weight: 600 !important; }
-    .stTabs [data-baseweb="tab-list"] { gap: 4px; background: #f8fafc; border-radius: 8px; padding: 4px; }
-    .stTabs [data-baseweb="tab"] { font-size: 13px; border-radius: 6px; padding: 6px 16px; }
+    [data-testid="stSidebar"] .stButton > button:hover { background: #111 !important; color: #cbd5e1 !important; }
+    [data-testid="stSidebar"] .stSelectbox div { background: #111 !important; border: 1px solid #222 !important; color: #94a3b8 !important; }
+    h1,h2,h3,h4 { color: white !important; font-weight: 700 !important; }
+    .stTabs [data-baseweb="tab-list"] { gap: 4px; background: #111; border-radius: 8px; padding: 4px; border: 1px solid #1e1e1e; }
+    .stTabs [data-baseweb="tab"] { font-size: 12px; border-radius: 6px; padding: 6px 16px; color: #64748b !important; }
     .stTabs [aria-selected="true"] { background: #2563eb !important; color: white !important; }
-    .stTabs [data-baseweb="tab-panel"] { padding-top: 16px; }
-    .stExpander { border: 1px solid #e2e8f0 !important; border-radius: 8px !important; }
+    .stTabs [data-baseweb="tab-panel"] { padding-top: 16px; background: transparent; }
+    .stExpander { border: 1px solid #1e1e1e !important; border-radius: 8px !important; background: #0a0a0a !important; }
+    .stExpander summary { color: #94a3b8 !important; }
     .stDataFrame { border-radius: 8px; }
-    p { font-size: 13px; }
-    .stMarkdown hr { border-color: #e2e8f0; margin: 0.5rem 0; }
+    p { font-size: 13px; color: #94a3b8; }
+    .stMarkdown hr { border-color: #1e1e1e; margin: 0.5rem 0; }
+    .stAlert { border-radius: 8px !important; }
+    .stTextInput input { background: #111 !important; border: 1px solid #222 !important; color: white !important; }
+    .stNumberInput input { background: #111 !important; border: 1px solid #222 !important; color: white !important; }
+    .stSelectbox div[data-baseweb="select"] { background: #111 !important; }
+    label { color: #64748b !important; font-size: 12px !important; }
+    .stFileUploader { background: #111 !important; border: 1px solid #222 !important; border-radius: 8px !important; padding: 8px !important; }
+    .stFileUploader label { color: #94a3b8 !important; font-size: 13px !important; font-weight: 500 !important; }
+    .stFileUploader section { background: #0a0a0a !important; border: 1px dashed #333 !important; }
+    .stFileUploader section span { color: #64748b !important; }
 </style>""", unsafe_allow_html=True)
 
 SUPABASE_URL = st.secrets.get("SUPABASE_URL","https://bddjuowbotsybamawsts.supabase.co")
@@ -52,6 +62,11 @@ def set_config(k, v, u):
     else: sb.table("configuracoes").insert({"chave":k,"valor":str(v),"updated_by":u}).execute()
     try: sb.table("log_alteracoes").insert({"tabela":"configuracoes","campo":k,"valor_anterior":str(old),"valor_novo":str(v),"usuario":u}).execute()
     except: pass
+
+def _uc(k, v, u):
+    sb=get_sb(); ex=sb.table("configuracoes").select("id").eq("chave",k).execute()
+    if ex.data: sb.table("configuracoes").update({"valor":str(v),"updated_by":u}).eq("chave",k).execute()
+    else: sb.table("configuracoes").insert({"chave":k,"valor":str(v),"updated_by":u}).execute()
 
 def get_ciclos(): return get_sb().table("ciclos").select("*").order("id",desc=True).execute().data or []
 def get_ciclo_ativo():
@@ -77,6 +92,19 @@ def upsert_meta(cid, sid, d):
     d['ciclo_id']=cid; d['setor_id']=sid
     get_sb().table("metas").upsert(d,on_conflict="ciclo_id,setor_id").execute()
 
+def hash_senha(s): return hashlib.sha256(s.encode()).hexdigest()
+
+def get_usuario(nome, senha):
+    try:
+        h = hash_senha(senha)
+        r = get_sb().table("usuarios").select("*").eq("nome",nome).eq("senha_hash",h).eq("ativo",True).single().execute()
+        return r.data if r.data else None
+    except: return None
+
+def get_usuarios():
+    try: return get_sb().table("usuarios").select("*").order("nome").execute().data or []
+    except: return []
+
 def fmt_br(v,dec=2): return f"{v:_.{dec}f}".replace("_","X").replace(".",",").replace("X",".")
 def fmt_moeda(v): return f"R$ {fmt_br(v)}"
 def fmt_pct(v,dec=1): return f"{v:.{dec}f}%".replace(".",",")
@@ -84,37 +112,13 @@ def fmt_int(v): return f"{int(v):,}".replace(",",".")
 
 PERFIS={"consultor":1,"gerencia":2,"admin":3}
 def check_auth():
-    for k in ["perfil","usuario","ciclo_sel_id"]:
+    for k in ["perfil","usuario","ciclo_sel_id","usuario_id"]:
         if k not in st.session_state: st.session_state[k]=None
-
-def login_screen():
-    _,col,_ = st.columns([1,1,1])
-    with col:
-        st.markdown('<div style="background:#1e293b;border-radius:12px;padding:28px;margin:40px 0 20px;text-align:center"><div style="font-size:20px;font-weight:700;color:white">💼 Venda Direta</div><div style="font-size:12px;color:#64748b;margin-top:4px">Dashboard de Gestão</div></div>',unsafe_allow_html=True)
-        nome=st.text_input("Nome"); senha=st.text_input("Senha",type="password")
-        if st.button("Entrar",use_container_width=True,type="primary"):
-            if not nome: st.error("Informe seu nome.")
-            elif senha==get_config("senha_admin","admin123"):
-                st.session_state.perfil="admin";st.session_state.usuario=nome
-                try: get_sb().table("log_acessos").insert({"usuario":nome,"perfil":"admin","acao":"login"}).execute()
-                except: pass
-                st.rerun()
-            elif senha==get_config("senha_gerencia","gerencia123"):
-                st.session_state.perfil="gerencia";st.session_state.usuario=nome
-                try: get_sb().table("log_acessos").insert({"usuario":nome,"perfil":"gerencia","acao":"login"}).execute()
-                except: pass
-                st.rerun()
-            elif senha==get_config("senha_consultor","consultor123"):
-                st.session_state.perfil="consultor";st.session_state.usuario=nome
-                try: get_sb().table("log_acessos").insert({"usuario":nome,"perfil":"consultor","acao":"login"}).execute()
-                except: pass
-                st.rerun()
-            else: st.error("Senha incorreta.")
 
 def requer_perfil(p):
     if PERFIS.get(st.session_state.get("perfil"),0)<PERFIS.get(p,99): st.warning("⛔ Sem permissão.");st.stop()
 
-def cor_class(c): return {'Diamante':'#1e3a5f','Ouro':'#92400e','Prata':'#475569','Bronze':'#78350f'}.get(c,'#64748b')
+def cor_class(c): return {'Diamante':'#3b82f6','Ouro':'#f59e0b','Prata':'#94a3b8','Bronze':'#d97706'}.get(c,'#475569')
 def emoji_class(c): return {'Diamante':'💎','Ouro':'🥇','Prata':'🥈','Bronze':'🥉'}.get(c,'—')
 def class_iaf(iaf,cfg={}):
     if iaf>=float(cfg.get('faixa_diamante_min',95)): return 'Diamante'
@@ -122,6 +126,12 @@ def class_iaf(iaf,cfg={}):
     if iaf>=float(cfg.get('faixa_prata_min',75)): return 'Prata'
     if iaf>=float(cfg.get('faixa_bronze_min',65)): return 'Bronze'
     return 'Não Classificado'
+
+def _cor_ating(pct):
+    if pct==0: return "#0f0f0f","#475569"
+    if pct>=100: return "#052e16","#4ade80"
+    if pct>=95: return "#1c1917","#fbbf24"
+    return "#1c0a0a","#f87171"
 
 def calc_pts(r,m,p,f50,f75,f100):
     if m<=0: return 0.0
@@ -218,76 +228,65 @@ def processar_ciclo(dfs,metas_list,setores_list,cfg):
 # =============================================
 # COMPONENTES VISUAIS
 # =============================================
-def _cor_bg(pct):
-    if pct==0: return "#f8fafc","#64748b"
-    if pct>=100: return "#f0fdf4","#166534"
-    if pct>=95: return "#fefce8","#854d0e"
-    return "#fef2f2","#991b1b"
-
-def card_kpi(label, valor, meta_str=None, pct=0, delta=None):
-    bg,tc = _cor_bg(pct)
+def card_home(label, valor, meta_str=None, pct=0, delta=None, info=False):
+    bg,tc = ("#0f0f0f","#475569") if info else _cor_ating(pct)
     delta_html=""
     if delta is not None:
-        dc="#16a34a" if delta>=0 else "#dc2626"
-        delta_html=f'<div style="font-size:11px;color:{dc};font-weight:600;margin-top:3px">{"▲" if delta>=0 else "▼"} {abs(delta):.1f}%</div>'
-    meta_html=f'<div style="font-size:11px;color:{tc}99;margin-top:3px">{meta_str}</div>' if meta_str else ""
-    st.markdown(f'<div style="background:{bg};border-radius:10px;padding:14px 16px;border:1px solid {tc}22"><div style="font-size:10px;color:{tc}99;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">{label}</div><div style="font-size:26px;font-weight:700;color:{tc};line-height:1">{valor}</div>{meta_html}{delta_html}</div>',unsafe_allow_html=True)
+        dc="#4ade80" if delta>=0 else "#f87171"
+        delta_html=f'<div style="font-size:11px;color:{dc};margin-top:4px">{"▲" if delta>=0 else "▼"} {abs(delta):.1f}%</div>'
+    meta_html=f'<div style="font-size:11px;color:{tc}88;margin-top:4px">{meta_str}</div>' if meta_str else ""
+    pct_html=f'<div style="font-size:12px;color:{tc};font-weight:600;margin-top:2px">{pct:.0f}%</div>' if not info and pct>0 else ""
+    return (f'<div style="border:1px solid white;border-radius:12px;padding:18px;background:{bg};height:100%">'
+            f'<div style="font-size:10px;color:{tc}88;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">{label}</div>'
+            f'<div style="font-size:24px;font-weight:700;color:{tc};line-height:1">{valor}</div>'
+            f'{meta_html}{pct_html}{delta_html}</div>')
 
-def semaforo_linha(pct,label,rv,mv):
-    bg,tc=_cor_bg(pct)
-    ic="⚪" if pct==0 else ("🟢" if pct>=100 else ("🟡" if pct>=95 else "🔴"))
-    return (f'<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-radius:6px;background:{bg};margin-bottom:3px">'
-            f'<span style="font-size:11px;color:{tc}">{ic} {label}</span>'
-            f'<div style="display:flex;align-items:center;gap:6px">'
-            f'<span style="font-size:11px;font-weight:700;color:{tc}">{rv}</span>'
-            f'<span style="font-size:10px;color:{tc}88">/ {mv}</span>'
-            f'<span style="font-size:10px;color:{tc};background:{tc}22;padding:1px 5px;border-radius:3px;font-weight:600">{pct:.0f}%</span>'
-            f'</div></div>')
+def badge_iaf(cl):
+    colors={'Diamante':('#1e3a5f','#93c5fd'),'Ouro':('#78350f','#fcd34d'),'Prata':('#1e293b','#cbd5e1'),'Bronze':('#3b1f0a','#d97706')}
+    bg,tc=colors.get(cl,('#111','#475569'))
+    em=emoji_class(cl)
+    return f'<span style="background:{bg};color:{tc};padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">{em} {cl}</span>'
 
-def linha_rank(pos,nome,iaf,cl,delta=None,extra=None,atencao=False):
-    cor=cor_class(cl); em=emoji_class(cl)
-    pos_bg=["#f59e0b","#94a3b8","#92400e"][pos-1] if pos<=3 else "#e2e8f0"
-    pos_txt="white" if pos<=3 else "#475569"
-    barra=min(iaf,100)
-    html=(f'<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:white;border-radius:8px;border:1px solid #e2e8f0;margin-bottom:4px">'
-          f'<div style="min-width:26px;height:26px;border-radius:50%;background:{pos_bg};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:{pos_txt}">{pos}</div>'
-          f'<div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'
-          f'<span style="font-weight:600;font-size:13px;color:#0f172a">{nome}')
-    if atencao: html+='<span style="font-size:10px;background:#fee2e2;color:#dc2626;padding:1px 5px;border-radius:4px;margin-left:6px">atenção</span>'
-    html+=f'</span><div style="display:flex;align-items:center;gap:8px">'
-    if delta is not None:
-        dc="#16a34a" if delta>=0 else "#dc2626"
-        html+=f'<span style="font-size:11px;color:{dc}">{"▲" if delta>=0 else "▼"}{abs(delta):.1f}%</span>'
-    html+=(f'<span style="font-weight:700;font-size:15px;color:{cor}">{iaf:.1f}%</span>'
-           f'<span style="background:{cor};color:white;padding:1px 8px;border-radius:10px;font-size:11px">{em} {cl}</span>')
-    if extra: html+=f'<span style="font-size:11px;color:#94a3b8">{extra}</span>'
-    html+=(f'</div></div><div style="background:#f1f5f9;border-radius:3px;height:4px;overflow:hidden">'
-           f'<div style="background:{cor};width:{barra:.1f}%;height:100%;border-radius:3px"></div>'
-           f'</div></div></div>')
-    st.markdown(html,unsafe_allow_html=True)
+def iaf_color(v):
+    if v>=85: return '#4ade80'
+    if v>=75: return '#fbbf24'
+    return '#f87171'
 
-def tabela_mini(titulo,dados,col_label,col_pct,col_extra=None):
-    st.markdown(f'<p style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px">{titulo}</p>',unsafe_allow_html=True)
-    html='<div style="background:white;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">'
-    for i,(_,row) in enumerate(dados.iterrows()):
-        bg="#f8fafc" if i%2==0 else "white"
-        ex=f'<span style="font-size:10px;color:#94a3b8;margin-left:8px">{row[col_extra]}</span>' if col_extra and col_extra in row and row[col_extra] else ""
-        html+=(f'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 12px;background:{bg}"><span style="font-size:12px;color:#475569">{row[col_label]}</span>'
-               f'<div><span style="font-size:12px;font-weight:700;color:#1e293b">{row[col_pct]:.1f}%</span>{ex}</div></div>')
-    html+='</div>'
-    st.markdown(html,unsafe_allow_html=True)
+ARQS=['Boticario','Cabelos','Eudora','Make','Oui','QDB','Ativos','ER','Vendedor']
+MARCAS_CFG=[('valor_boticario','meta_boticario','Boticário'),('valor_eudora','meta_eudora','Eudora'),('valor_oui','meta_oui','OUI'),('valor_qdb','meta_qdb','QDB')]
 
-ARQS=['Boticario','Cabelos','Eudora','Make','Oui','QDB','Ativos','ER']
-MARCAS_CFG=[('valor_boticario','meta_boticario','Boticário'),('valor_eudora','meta_eudora','Eudora'),
-            ('valor_oui','meta_oui','OUI'),('valor_qdb','meta_qdb','QDB'),
-            ('valor_cabelos','meta_cabelos','Cabelos'),('valor_make','meta_make','Make')]
-INDS_PCT=[('pct_multimarcas','meta_multimarcas','Multimarcas'),('pct_cabelos','meta_pct_cabelos','Cabelos %'),
-          ('pct_make','meta_pct_make','Make %'),('pct_atividade','meta_atividade','Atividade')]
-
-def _uc_sb(sb, k, v, usuario):
-    ex=sb.table("configuracoes").select("id").eq("chave",k).execute()
-    if ex.data: sb.table("configuracoes").update({"valor":str(v),"updated_by":usuario}).eq("chave",k).execute()
-    else: sb.table("configuracoes").insert({"chave":k,"valor":str(v),"updated_by":usuario}).execute()
+# =============================================
+# LOGIN
+# =============================================
+def login_screen():
+    _,col,_ = st.columns([1,1,1])
+    with col:
+        st.markdown('<div style="background:#0a0a0a;border:1px solid #1e1e1e;border-radius:12px;padding:32px;margin:40px 0 20px;text-align:center"><div style="font-size:22px;font-weight:700;color:white;margin-bottom:4px">💼 Venda Direta</div><div style="font-size:12px;color:#475569">Dashboard de Gestão</div></div>',unsafe_allow_html=True)
+        nome=st.text_input("Nome de usuário"); senha=st.text_input("Senha",type="password")
+        if st.button("Entrar",use_container_width=True,type="primary"):
+            if not nome: st.error("Informe seu nome.")
+            else:
+                u=get_usuario(nome,senha)
+                if u:
+                    st.session_state.perfil=u['perfil']
+                    st.session_state.usuario=u['nome']
+                    st.session_state.usuario_id=u['id']
+                    try: get_sb().table("log_acessos").insert({"usuario":u['nome'],"perfil":u['perfil'],"acao":"login"}).execute()
+                    except: pass
+                    st.rerun()
+                else:
+                    # Fallback senhas legadas
+                    if senha==get_config("senha_admin","admin123"):
+                        st.session_state.perfil="admin";st.session_state.usuario=nome
+                        try: get_sb().table("log_acessos").insert({"usuario":nome,"perfil":"admin","acao":"login"}).execute()
+                        except: pass
+                        st.rerun()
+                    elif senha==get_config("senha_gerencia","gerencia123"):
+                        st.session_state.perfil="gerencia";st.session_state.usuario=nome
+                        try: get_sb().table("log_acessos").insert({"usuario":nome,"perfil":"gerencia","acao":"login"}).execute()
+                        except: pass
+                        st.rerun()
+                    else: st.error("Usuário ou senha incorretos.")
 
 # =============================================
 # HOME
@@ -296,87 +295,76 @@ def pg_home(cid):
     ciclo=get_ciclo_ativo(); ciclos=get_ciclos()
     cs=next((c for c in ciclos if c['id']==cid),ciclo) if cid else ciclo
     if not cs: st.warning("⚠️ Sem ciclo ativo."); return
-    st.title(f"🏠 Visão Geral — {cs['nome']}")
-    st.markdown("---")
+    st.markdown(f'<h1 style="color:white;font-size:22px;font-weight:700;margin-bottom:16px">🏠 Visão Geral — {cs["nome"]}</h1>',unsafe_allow_html=True)
     res=get_resultados(cs['id'])
     if not res: st.info("📊 Aguardando processamento."); _status_arqs(cs); return
     df=pd.DataFrame(res)
     fin=df[df['tipo']=='financeiro']
     mc=['valor_boticario','valor_eudora','valor_oui','valor_qdb','valor_cabelos','valor_make']
-    receita_supabase=float(get_config(f"receita_ativos_{cs['id']}",0) or 0)
-    receita=receita_supabase if receita_supabase>0 else df[mc].sum().sum()
-    ativos_glob=int(get_config(f"ativos_unicos_{cs['id']}",0) or 0)
+    receita=float(get_config(f"receita_ativos_{cs['id']}",0) or 0)
+    if receita==0: receita=df[mc].sum().sum()
+    ativos=int(get_config(f"ativos_unicos_{cs['id']}",0) or 0)
     sf=get_setores(tipo='financeiro'); ids_fin={s['id'] for s in sf}
     metas_h={m['setor_id']:m for m in get_metas(cs['id'])}
-    meta_rec=sum(float(metas_h.get(sid,{}).get(f'meta_{m}',0)) for sid in ids_fin for m in ['boticario','eudora','oui','qdb','cabelos','make'])
     total_base=sum(int(metas_h.get(sid,{}).get('tamanho_base',0)) for sid in ids_fin)
-    meta_ativ_global=float(get_config(f"meta_atividade_global_{cs['id']}",0) or 0)
-    pct_ativ=ativos_glob/total_base*100 if total_base>0 else 0
-    pct_rec=receita/meta_rec*100 if meta_rec>0 else 0
-    try: make_global_codes=set(_json.loads(get_config(f"make_global_{cs['id']}","[]") or "[]"))
-    except: make_global_codes=set()
-    try: cab_global_codes=set(_json.loads(get_config(f"cab_global_{cs['id']}","[]") or "[]"))
-    except: cab_global_codes=set()
-    pct_make=len(make_global_codes)/ativos_glob*100 if ativos_glob>0 and make_global_codes else (fin['pct_make'].mean() if len(fin)>0 else 0)
-    pct_cab=len(cab_global_codes)/ativos_glob*100 if ativos_glob>0 and cab_global_codes else (fin['pct_cabelos'].mean() if len(fin)>0 else 0)
-    meta_make=sum(float(metas_h.get(sid,{}).get('meta_pct_make',0)) for sid in ids_fin)/len(sf) if sf else 0
+    meta_rec=sum(float(metas_h.get(sid,{}).get(f'meta_{m}',0)) for sid in ids_fin for m in ['boticario','eudora','oui','qdb','cabelos','make'])
+    meta_ativ=float(get_config(f"meta_atividade_global_{cs['id']}",0) or 0)
+    meta_ativos=float(get_config(f"meta_ativos_{cs['id']}",0) or 0)
+    meta_rpa=float(get_config(f"meta_rpa_{cs['id']}",0) or 0)
+    meta_multi=sum(float(metas_h.get(sid,{}).get('meta_multimarcas',0)) for sid in ids_fin)/len(sf) if sf else 0
     meta_cab=sum(float(metas_h.get(sid,{}).get('meta_pct_cabelos',0)) for sid in ids_fin)/len(sf) if sf else 0
-    pct_make_c=pct_make/meta_make*100 if meta_make>0 else 0
+    meta_mak=sum(float(metas_h.get(sid,{}).get('meta_pct_make',0)) for sid in ids_fin)/len(sf) if sf else 0
+    pct_ativ=ativos/total_base*100 if total_base>0 else 0
+    try: multi_codes=set(_json.loads(get_config(f"multi_global_{cs['id']}","[]") or "[]"))
+    except: multi_codes=set()
+    try: cab_codes=set(_json.loads(get_config(f"cab_global_{cs['id']}","[]") or "[]"))
+    except: cab_codes=set()
+    try: make_codes=set(_json.loads(get_config(f"make_global_{cs['id']}","[]") or "[]"))
+    except: make_codes=set()
+    pct_multi=len(multi_codes)/ativos*100 if ativos>0 and multi_codes else fin['pct_multimarcas'].mean() if len(fin)>0 else 0
+    pct_cab=len(cab_codes)/ativos*100 if ativos>0 and cab_codes else fin['pct_cabelos'].mean() if len(fin)>0 else 0
+    pct_mak=len(make_codes)/ativos*100 if ativos>0 and make_codes else fin['pct_make'].mean() if len(fin)>0 else 0
+    rpa=receita/ativos if ativos>0 else 0
+    base_atual=int(get_config(f"base_atual_{cs['id']}",0) or 0)
+    base_pef=int(get_config(f"base_meta_pef_{cs['id']}",0) or 0)
+    gap=base_atual-base_pef
+    pct_rec=receita/meta_rec*100 if meta_rec>0 else 0
+    pct_ativ_c=pct_ativ/meta_ativ*100 if meta_ativ>0 else 0
+    pct_ativos_c=ativos/meta_ativos*100 if meta_ativos>0 else 0
+    pct_multi_c=pct_multi/meta_multi*100 if meta_multi>0 else 0
     pct_cab_c=pct_cab/meta_cab*100 if meta_cab>0 else 0
-    pct_ativ_c=pct_ativ/meta_ativ_global*100 if meta_ativ_global>0 else 0
-    c_ant=next((c for c in ciclos if c['id']<cs['id']),None)
-    dr=dat=dmk=dcb=None
-    if c_ant:
-        ra=get_resultados(c_ant['id'])
-        if ra:
-            dfa=pd.DataFrame(ra); fa=dfa[dfa['tipo']=='financeiro']
-            rec_a=float(get_config(f"receita_ativos_{c_ant['id']}",0) or 0)
-            if rec_a==0: rec_a=dfa[mc].sum().sum()
-            dr=(receita-rec_a)/rec_a*100 if rec_a>0 else None
-            dmk=(pct_make-fa['pct_make'].mean()) if len(fa)>0 else None
-            dcb=(pct_cab-fa['pct_cabelos'].mean()) if len(fa)>0 else None
-            at_a=int(get_config(f"ativos_unicos_{c_ant['id']}",0) or 0)
-            base_a=sum(int({m['setor_id']:m for m in get_metas(c_ant['id'])}.get(sid,{}).get('tamanho_base',0)) for sid in ids_fin)
-            pct_a=at_a/base_a*100 if base_a>0 else 0; dat=pct_ativ-pct_a
-    st.markdown("#### Indicadores Principais")
-    c1,c2,c3,c4=st.columns(4)
-    with c1: card_kpi("Receita Total",fmt_moeda(receita),f"Meta: {fmt_moeda(meta_rec)} | {pct_rec:.0f}%",pct_rec,dr)
-    with c2: card_kpi("Atividade Global",fmt_pct(pct_ativ),f"Meta: {fmt_pct(meta_ativ_global)} | {pct_ativ_c:.0f}%" if meta_ativ_global>0 else f"{fmt_int(ativos_glob)} ativos",pct_ativ_c,dat)
-    with c3: card_kpi("Make",fmt_pct(pct_make),f"Meta: {fmt_pct(meta_make)} | {pct_make_c:.0f}%",pct_make_c,dmk)
-    with c4: card_kpi("Cabelos",fmt_pct(pct_cab),f"Meta: {fmt_pct(meta_cab)} | {pct_cab_c:.0f}%",pct_cab_c,dcb)
-    st.markdown("---")
-    st.markdown("#### 🏆 Pódio do Ciclo")
-    try:
-        sl=get_sb().table("setores").select("id,nome,ativo").execute().data or []
-        nm_map={s['id']:s['nome'] for s in sl}; ids_at={s['id'] for s in sl if s['ativo']}
-    except: nm_map={}; ids_at=set()
-    todos=df[df['setor_id'].isin(ids_at)].sort_values('iaf',ascending=False).head(3)
-    cp=st.columns(3)
-    for i,(_,r) in enumerate(todos.iterrows()):
-        nm=nm_map.get(r['setor_id'],"—"); cor=cor_class(r['classificacao'])
-        bg,tc=_cor_bg(r['iaf'])
-        with cp[i]:
-            st.markdown(f'<div style="background:{bg};border-radius:10px;padding:16px;text-align:center;border:1px solid {tc}22"><div style="font-size:22px">{"🥇🥈🥉"[i]}</div><div style="font-size:13px;font-weight:600;color:#1e293b;margin:6px 0">{nm}</div><div style="font-size:28px;font-weight:700;color:{tc}">{fmt_pct(r["iaf"])}</div><div style="font-size:11px;color:{tc}88">{emoji_class(r["classificacao"])} {r["classificacao"]}</div></div>',unsafe_allow_html=True)
-    st.markdown("")
-    st.markdown("#### 🏅 Classificações")
-    todos_r=df[df['setor_id'].isin(ids_at)].sort_values('iaf',ascending=False)
-    for _,r in todos_r.iterrows():
-        nm=nm_map.get(r['setor_id'],str(r['setor_id'])); cor=cor_class(r['classificacao']); em=emoji_class(r['classificacao'])
-        bg,tc=_cor_bg(r['iaf'])
-        st.markdown(f'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-radius:8px;background:{bg};border:1px solid {tc}22;margin-bottom:4px"><span style="font-size:13px;font-weight:600;color:#0f172a">{nm}</span><div style="display:flex;align-items:center;gap:14px"><span style="font-size:11px;color:{tc}88">{r["pontuacao_obtida"]:.0f}/{r["pontuacao_maxima"]:.0f} pts</span><span style="font-size:16px;font-weight:700;color:{tc}">{fmt_pct(r["iaf"])}</span><span style="background:{cor};color:white;padding:2px 8px;border-radius:10px;font-size:11px">{em} {r["classificacao"]}</span></div></div>',unsafe_allow_html=True)
-    st.markdown("")
+    pct_mak_c=pct_mak/meta_mak*100 if meta_mak>0 else 0
+    pct_rpa_c=rpa/meta_rpa*100 if meta_rpa>0 else 0
+    cards=[
+        card_home("Receita Total",fmt_moeda(receita),f"Meta: {fmt_moeda(meta_rec)}",pct_rec),
+        card_home("Atividade Global",fmt_pct(pct_ativ),f"Meta: {fmt_pct(meta_ativ)}",pct_ativ_c),
+        card_home("Ativos",fmt_int(ativos),f"Meta: {fmt_int(int(meta_ativos))}",pct_ativos_c),
+        card_home("Penetração Multimarcas",fmt_pct(pct_multi),f"Meta: {fmt_pct(meta_multi)}",pct_multi_c),
+        card_home("Penetração Cabelos",fmt_pct(pct_cab),f"Meta: {fmt_pct(meta_cab)}",pct_cab_c),
+        card_home("Penetração Make",fmt_pct(pct_mak),f"Meta: {fmt_pct(meta_mak)}",pct_mak_c),
+        card_home("RPA",fmt_moeda(rpa),f"Meta: {fmt_moeda(meta_rpa)}",pct_rpa_c),
+        card_home("Base Total",fmt_int(base_atual),None,0,None,True),
+        card_home("Gap / Bônus",f'{("+" if gap>=0 else "")}{fmt_int(gap)}','base atual - meta PEF',0,None,gap>=0),
+    ]
+    # Grid 3x3
+    for row in range(3):
+        cols=st.columns(3)
+        for col in range(3):
+            idx=row*3+col
+            if idx<len(cards):
+                with cols[col]: st.markdown(cards[idx],unsafe_allow_html=True)
+        st.markdown("<div style='height:8px'></div>",unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>",unsafe_allow_html=True)
     _status_arqs(cs)
 
 def _status_arqs(cs):
     with st.expander("📁 Status dos Arquivos",expanded=False):
         logs=get_logs(cs['id']); ok={l['arquivo'] for l in logs}; dt={l['arquivo']:l['data_upload'] for l in logs}
+        arqs_base=['Boticario','Cabelos','Eudora','Make','Oui','QDB','Ativos','ER']
         cols=st.columns(4)
-        for i,a in enumerate(ARQS):
-            c="#16a34a" if a in ok else "#dc2626"
-            with cols[i%4]: st.markdown(f'<div style="padding:6px 10px;border-radius:6px;background:{c}11;border:1px solid {c}33;margin-bottom:4px;font-size:12px">{"✅" if a in ok else "❌"} <b>{a}</b><br><span style="color:{c}">{dt.get(a,"")[:16] if a in ok else "Aguardando"}</span></div>',unsafe_allow_html=True)
-        falt=[a for a in ARQS if a not in ok]
-        if falt: st.warning(f"Pendentes: {', '.join(falt)}")
-        else: st.success("Todos carregados!")
+        for i,a in enumerate(arqs_base):
+            c="#4ade80" if a in ok else "#f87171"
+            with cols[i%4]: st.markdown(f'<div style="padding:6px 10px;border-radius:6px;background:{c}11;border:1px solid {c}33;margin-bottom:4px;font-size:12px;color:{c}">{"✅" if a in ok else "❌"} {a}<br><span style="font-size:10px;color:#475569">{dt.get(a,"")[:16] if a in ok else "Aguardando"}</span></div>',unsafe_allow_html=True)
 
 # =============================================
 # BASE
@@ -385,8 +373,7 @@ def pg_base(cid):
     ciclo=get_ciclo_ativo(); ciclos=get_ciclos()
     cs=next((c for c in ciclos if c['id']==cid),ciclo) if cid else ciclo
     if not cs: st.warning("⚠️ Sem ciclo ativo."); return
-    st.title("👥 Supervisoras de Base")
-    st.markdown("---")
+    st.markdown('<h1 style="color:white;font-size:22px;font-weight:700;margin-bottom:16px">👥 Supervisoras de Base</h1>',unsafe_allow_html=True)
     sb_list=get_setores(tipo='base')
     if not sb_list: st.info("Nenhum setor Base configurado."); return
     res_all=get_resultados(cs['id'],tipo='base')
@@ -402,66 +389,62 @@ def pg_base(cid):
     base_atual=int(get_config(f"base_atual_{cs['id']}",0) or 0)
     base_pef=int(get_config(f"base_meta_pef_{cs['id']}",0) or 0)
     gap=base_atual-base_pef
-    bg_gap="#f0fdf4" if gap>=0 else "#fef2f2"; tc_gap="#166534" if gap>=0 else "#991b1b"
-    bg_gb="#f0fdf4" if gb else "#fef2f2"; tc_gb="#166534" if gb else "#991b1b"
-    st.markdown("#### Indicadores do Grupo")
-    c1,c2,c3,c4=st.columns(4)
-    with c1: card_kpi("Meta do Grupo",f"{t_real} / {t_meta}",f"{fmt_pct(pct_g)} atingido",pct_g)
-    with c2: st.markdown(f'<div style="background:{bg_gb};border-radius:10px;padding:14px 16px;border:1px solid {tc_gb}22"><div style="font-size:10px;color:{tc_gb}99;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Bônus Grupo</div><div style="font-size:18px;font-weight:700;color:{tc_gb}">{"✅ Conquistado" if gb else "❌ Não conquistado"}</div><div style="font-size:11px;color:{tc_gb}88;margin-top:3px">{"+200 pts para todas" if gb else f"Faltam {t_meta-t_real}"}</div></div>',unsafe_allow_html=True)
-    with c3: st.markdown(f'<div style="background:#f8fafc;border-radius:10px;padding:14px 16px;border:1px solid #e2e8f0"><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Base Atual</div><div style="font-size:26px;font-weight:700;color:#1e293b">{fmt_int(base_atual)}</div><div style="font-size:11px;color:#94a3b8;margin-top:3px">Meta PEF: {fmt_int(base_pef)}</div></div>',unsafe_allow_html=True)
-    with c4: st.markdown(f'<div style="background:{bg_gap};border-radius:10px;padding:14px 16px;border:1px solid {tc_gap}22"><div style="font-size:10px;color:{tc_gap}99;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Gap / Bônus</div><div style="font-size:26px;font-weight:700;color:{tc_gap}">{("+" if gap>=0 else "")}{fmt_int(gap)}</div><div style="font-size:11px;color:{tc_gap}88;margin-top:3px">base atual - meta PEF</div></div>',unsafe_allow_html=True)
-    st.markdown("---")
-    c_ant=next((c for c in ciclos if c['id']<cs['id']),None)
-    r_ant={r['setor_id']:r for r in get_resultados(c_ant['id'],tipo='base')} if c_ant else {}
-    st.markdown("#### 🏆 Ranking Individual")
-    res_s=sorted(res,key=lambda x:x['iaf'],reverse=True)
+    # KPIs
+    bg_g,tc_g=_cor_ating(pct_g)
+    bg_gb="#052e16" if gb else "#1c0a0a"; tc_gb="#4ade80" if gb else "#f87171"
+    bg_gap="#052e16" if gap>=0 else "#1c0a0a"; tc_gap="#4ade80" if gap>=0 else "#f87171"
+    st.markdown(f'''<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
+    <div style="border:1px solid white;border-radius:12px;padding:16px;background:{bg_g}">
+        <div style="font-size:10px;color:{tc_g}88;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Meta do Grupo</div>
+        <div style="font-size:22px;font-weight:700;color:{tc_g}">{t_real} / {t_meta}</div>
+        <div style="font-size:11px;color:{tc_g}88;margin-top:4px">{fmt_pct(pct_g)} atingido</div></div>
+    <div style="border:1px solid white;border-radius:12px;padding:16px;background:{bg_gb}">
+        <div style="font-size:10px;color:{tc_gb}88;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Bônus Grupo</div>
+        <div style="font-size:18px;font-weight:700;color:{tc_gb}">{"✅ Conquistado" if gb else "❌ Não conquistado"}</div>
+        <div style="font-size:11px;color:{tc_gb}88;margin-top:4px">{"+200 pts para todas" if gb else f"Faltam {t_meta-t_real}"}</div></div>
+    <div style="border:1px solid white;border-radius:12px;padding:16px;background:#0f0f0f">
+        <div style="font-size:10px;color:#47556988;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Base Atual</div>
+        <div style="font-size:22px;font-weight:700;color:#94a3b8">{fmt_int(base_atual)}</div>
+        <div style="font-size:11px;color:#47556988;margin-top:4px">Meta PEF: {fmt_int(base_pef)}</div></div>
+    <div style="border:1px solid white;border-radius:12px;padding:16px;background:{bg_gap}">
+        <div style="font-size:10px;color:{tc_gap}88;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Gap / Bônus</div>
+        <div style="font-size:22px;font-weight:700;color:{tc_gap}">{("+" if gap>=0 else "")}{fmt_int(gap)}</div>
+        <div style="font-size:11px;color:{tc_gap}88;margin-top:4px">base atual - meta PEF</div></div>
+    </div>''',unsafe_allow_html=True)
+    # Tabela supervisoras
+    res_s=sorted(res,key=lambda x:x['inicios_reinicios'],reverse=True)
+    html='<table style="width:100%;border-collapse:collapse">'
+    html+=('<thead><tr style="border-bottom:1px solid #222">'
+           '<th style="text-align:left;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px"># Supervisora</th>'
+           '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Realizado</th>'
+           '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Meta</th>'
+           '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">%</th>'
+           '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Contrib.</th>'
+           '</tr></thead><tbody>')
     for pos,r in enumerate(res_s,1):
         sid=r['setor_id']; nome=sid_nm.get(sid,str(sid)); meta=metas.get(sid,{})
         real_ir=int(meta.get('realizado_inicios_reinicios',0)); meta_ir=int(meta.get('meta_inicios_reinicios',0))
+        pct_ir=real_ir/meta_ir*100 if meta_ir>0 else 0
         contrib=real_ir/t_meta*100 if t_meta>0 else 0
-        delta=round(r['iaf']-r_ant[sid]['iaf'],1) if sid in r_ant else None
-        linha_rank(pos,nome,r['iaf'],r['classificacao'],delta,f"I+R: {real_ir}/{meta_ir} | Contrib: {fmt_pct(contrib)}")
-    st.markdown("")
-    if res and t_meta>0:
-        st.markdown("#### 📊 Contribuição para Meta do Grupo")
-        ids_mg={s['id'] for s in sb_mg}
-        res_mg=[r for r in res_s if r['setor_id'] in ids_mg]
-        html='<div style="background:white;border-radius:10px;border:1px solid #e2e8f0;padding:16px">'
-        for pos,r in enumerate(res_mg,1):
-            sid=r['setor_id']; meta=metas.get(sid,{})
-            real_ir=int(meta.get('realizado_inicios_reinicios',0)); contrib=real_ir/t_meta*100
-            barra=min(contrib/100*100,100)
-            cor_b=cor_class(r['classificacao'])
-            pos_bg=["#f59e0b","#94a3b8","#92400e"][pos-1] if pos<=3 else "#e2e8f0"
-            pos_txt="white" if pos<=3 else "#475569"
-            html+=(f'<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f8fafc">'
-                   f'<div style="min-width:22px;height:22px;border-radius:50%;background:{pos_bg};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:{pos_txt}">{pos}</div>'
-                   f'<div style="width:180px;font-size:12px;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{sid_nm.get(sid,str(sid))}</div>'
-                   f'<div style="flex:1;background:#f1f5f9;border-radius:4px;height:8px;overflow:hidden"><div style="background:{cor_b};width:{barra:.1f}%;height:100%;border-radius:4px"></div></div>'
-                   f'<div style="width:28px;font-size:12px;font-weight:700;color:#1e293b;text-align:right">{real_ir}</div>'
-                   f'<div style="width:42px;font-size:11px;font-weight:700;color:{cor_b};text-align:right">{contrib:.1f}%</div>'
-                   f'</div>')
-        total_pct=t_real/t_meta*100 if t_meta>0 else 0
-        bg_t,tc_t=_cor_bg(total_pct)
-        html+=(f'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0">'
-               f'<div><div style="font-size:11px;color:#64748b">Total realizado vs meta do grupo</div>'
-               f'<div style="font-size:11px;color:#94a3b8;margin-top:2px">{t_real} de {t_meta} inícios+reinícios</div></div>'
-               f'<div style="display:flex;align-items:center;gap:8px">'
-               f'<span style="font-size:10px;background:{bg_t};color:{tc_t};padding:2px 8px;border-radius:4px;border:1px solid {tc_t}22">Meta: {t_meta}</span>'
-               f'<span style="font-size:14px;font-weight:700;color:{tc_t}">{fmt_pct(total_pct)}</span></div></div></div>')
-        st.markdown(html,unsafe_allow_html=True)
-    st.markdown("")
-    st.markdown("#### 📈 Evolução I+R por Ciclo")
-    evol=[]
-    for c in ciclos[-6:]:
-        mc2={m['setor_id']:m for m in get_metas(c['id'])}
-        for rv in get_resultados(c['id'],tipo='base'):
-            nm=sid_nm.get(rv['setor_id'],str(rv['setor_id']))
-            evol.append({'Ciclo':c['nome'],'Supervisora':nm,'I+R':rv['inicios_reinicios']})
-    if evol:
-        fig=px.line(pd.DataFrame(evol),x='Ciclo',y='I+R',color='Supervisora',markers=True,color_discrete_sequence=['#1e3a5f','#2563eb','#64748b','#92400e','#16a34a'])
-        fig.update_layout(height=300,margin=dict(t=10,b=10),plot_bgcolor='white',paper_bgcolor='white')
-        st.plotly_chart(fig,use_container_width=True)
+        _,tc=_cor_ating(pct_ir)
+        pos_bg=["#f59e0b","#94a3b8","#92400e"][pos-1] if pos<=3 else "#1e293b"
+        pos_tc="black" if pos==1 else "white"
+        html+=(f'<tr style="border-bottom:1px solid #111">'
+               f'<td style="padding:10px;text-align:left"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:{pos_bg};color:{pos_tc};font-size:11px;font-weight:700;margin-right:10px">{pos}</span>'
+               f'<span style="color:white;font-weight:500;font-size:13px">{nome}</span></td>'
+               f'<td style="padding:10px;text-align:right;color:#cbd5e1;font-size:13px">{real_ir}</td>'
+               f'<td style="padding:10px;text-align:right;color:#475569;font-size:13px">{meta_ir}</td>'
+               f'<td style="padding:10px;text-align:right;color:{tc};font-weight:700;font-size:13px">{fmt_pct(pct_ir)}</td>'
+               f'<td style="padding:10px;text-align:right;color:#64748b;font-size:12px">{fmt_pct(contrib)}</td>'
+               f'</tr>')
+    html+=('</tbody></table>'
+           f'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:12px;background:#0a0a0a;border-radius:8px;border:1px solid #1e1e1e">'
+           f'<span style="color:#475569;font-size:12px">Total I+R do grupo (setores meta)</span>'
+           f'<div style="display:flex;align-items:center;gap:16px">'
+           f'<span style="color:white;font-size:14px;font-weight:700">{t_real} de {t_meta}</span>'
+           f'<span style="color:{"#4ade80" if pct_g>=100 else "#fbbf24" if pct_g>=95 else "#f87171"};font-size:14px;font-weight:700">{fmt_pct(pct_g)}</span>'
+           f'</div></div>')
+    st.markdown(html,unsafe_allow_html=True)
 
 # =============================================
 # FINANCEIRO
@@ -470,8 +453,7 @@ def pg_financeiro(cid):
     ciclo=get_ciclo_ativo(); ciclos=get_ciclos()
     cs=next((c for c in ciclos if c['id']==cid),ciclo) if cid else ciclo
     if not cs: st.warning("⚠️ Sem ciclo ativo."); return
-    st.title("💼 Supervisoras de Financeiro")
-    st.markdown("---")
+    st.markdown('<h1 style="color:white;font-size:22px;font-weight:700;margin-bottom:16px">💼 Supervisoras de Financeiro</h1>',unsafe_allow_html=True)
     sf_list=get_setores(tipo='financeiro')
     if not sf_list: st.info("Sem setores Financeiro."); return
     res_all=get_resultados(cs['id'],tipo='financeiro')
@@ -480,150 +462,160 @@ def pg_financeiro(cid):
     res=[r for r in res_all if r['setor_id'] in ids_at]
     todos_s=get_sb().table("setores").select("id,nome").execute().data or []
     sid_nm={s['id']:s['nome'] for s in todos_s}
-    c_ant=next((c for c in ciclos if c['id']<cs['id']),None)
-    r_ant={r['setor_id']:r for r in get_resultados(c_ant['id'],tipo='financeiro')} if c_ant else {}
     if not res: st.info("Sem dados para este ciclo."); return
-    df_r=pd.DataFrame(res)
-    mc=['valor_boticario','valor_eudora','valor_oui','valor_qdb','valor_cabelos','valor_make']
-    receita_supabase_fin=float(get_config(f"receita_ativos_{cs['id']}",0) or 0)
-    receita=receita_supabase_fin if receita_supabase_fin>0 else sum(df_r[c].sum() for c in mc)
-    meta_rec=sum(float(metas.get(s['id'],{}).get(f'meta_{m}',0)) for s in sf_list for m in ['boticario','eudora','oui','qdb','cabelos','make'])
-    meta_multi=sum(float(metas.get(s['id'],{}).get('meta_multimarcas',0)) for s in sf_list)/len(sf_list) if sf_list else 0
-    meta_ativ=sum(float(metas.get(s['id'],{}).get('meta_atividade',0)) for s in sf_list)/len(sf_list) if sf_list else 0
-    ativos_glob_fin=int(get_config(f"ativos_unicos_{cs['id']}",0) or 0)
-    # Multimarcas global
-    try: multi_global_codes=set(_json.loads(get_config(f"multi_global_{cs['id']}","[]") or "[]"))
-    except: multi_global_codes=set()
-    pct_multi=len(multi_global_codes)/ativos_glob_fin*100 if ativos_glob_fin>0 and multi_global_codes else df_r['pct_multimarcas'].mean()
-    # Atividade global
-    total_base_fin=sum(int(metas.get(s['id'],{}).get('tamanho_base',0)) for s in sf_list)
-    pct_ativ=ativos_glob_fin/total_base_fin*100 if total_base_fin>0 else df_r['pct_atividade'].mean()
-    pct_rec=receita/meta_rec*100 if meta_rec>0 else 0
-    pct_mc=pct_multi/meta_multi*100 if meta_multi>0 else 0
-    pct_ac=pct_ativ/meta_ativ*100 if meta_ativ>0 else 0
-    st.markdown("#### Visão do Grupo")
-    c1,c2,c3,c4=st.columns(4)
-    with c1: card_kpi("Receita Total",fmt_moeda(receita),f"Meta: {fmt_moeda(meta_rec)} | {pct_rec:.0f}%",pct_rec)
-    with c2: card_kpi("Ativos",fmt_int(ativos_glob_fin if ativos_glob_fin>0 else int(df_r['ativos'].sum())))
-    with c3: card_kpi("Atividade",fmt_pct(pct_ativ),f"Meta: {fmt_pct(meta_ativ)} | {pct_ac:.0f}%",pct_ac)
-    with c4: card_kpi("Multimarcas",fmt_pct(pct_multi),f"Meta: {fmt_pct(meta_multi)} | {pct_mc:.0f}%",pct_mc)
-    st.markdown("---")
-    st.markdown("#### 🏆 Rankings por Indicador")
-    tab_iaf,tab_multi,tab_ativ,tab_cab,tab_make=st.tabs(["IAF","Multimarcas","Atividade","Cabelos %","Make %"])
-    dr=[]
+    # Tabela ordenável
+    st.markdown('<p style="color:#475569;font-size:11px;margin-bottom:8px">Clique no cabeçalho para ordenar</p>',unsafe_allow_html=True)
+    rows=[]
     for r in res:
         nm=sid_nm.get(r['setor_id'],str(r['setor_id'])); meta=metas.get(r['setor_id'],{})
-        dr.append({'nome':nm,'iaf':r['iaf'],'classificacao':r['classificacao'],'setor_id':r['setor_id'],
-            'pct_multimarcas':r['pct_multimarcas'],'meta_multimarcas':float(meta.get('meta_multimarcas',0)),
-            'pct_atividade':r['pct_atividade'],'meta_atividade':float(meta.get('meta_atividade',0)),
-            'pct_cabelos':r['pct_cabelos'],'meta_cabelos':float(meta.get('meta_pct_cabelos',0)),
-            'pct_make':r['pct_make'],'meta_make':float(meta.get('meta_pct_make',0))})
-    def mini_rank(dados,key,mk):
-        for pos,d in enumerate(sorted(dados,key=lambda x:x[key],reverse=True),1):
-            v=d[key]; m=d[mk]; pct=v/m*100 if m>0 else 0
-            bg,tc=_cor_bg(pct); ic="🟢" if pct>=100 else ("🟡" if pct>=95 else ("🔴" if pct>0 else "⚪"))
-            pb=["#f59e0b","#94a3b8","#92400e"][pos-1] if pos<=3 else "#e2e8f0"; pt="white" if pos<=3 else "#475569"
-            st.markdown(f'<div style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:{bg};border-radius:8px;border:1px solid {tc}22;margin-bottom:3px"><div style="min-width:24px;height:24px;border-radius:50%;background:{pb};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:{pt}">{pos}</div><span style="flex:1;font-size:13px;font-weight:600;color:#0f172a">{d["nome"]}</span><span style="font-size:13px;font-weight:700;color:{tc}">{ic} {fmt_pct(v)}</span><span style="font-size:11px;color:{tc}88">meta {fmt_pct(m)} ({pct:.0f}%)</span></div>',unsafe_allow_html=True)
-    with tab_iaf:
-        for pos,r in enumerate(sorted(res,key=lambda x:x['iaf'],reverse=True),1):
-            delta=round(r['iaf']-r_ant[r['setor_id']]['iaf'],1) if r['setor_id'] in r_ant else None
-            linha_rank(pos,sid_nm.get(r['setor_id'],str(r['setor_id'])),r['iaf'],r['classificacao'],delta,atencao=r['iaf']<75)
-    with tab_multi: mini_rank(dr,'pct_multimarcas','meta_multimarcas')
-    with tab_ativ: mini_rank(dr,'pct_atividade','meta_atividade')
-    with tab_cab: mini_rank(dr,'pct_cabelos','meta_cabelos')
-    with tab_make: mini_rank(dr,'pct_make','meta_make')
-    st.markdown("")
-    st.markdown("#### 📋 Desempenho Individual")
-    for r in sorted(res,key=lambda x:x['iaf'],reverse=True):
-        sid=r['setor_id']; nome=sid_nm.get(sid,str(sid)); meta=metas.get(sid,{})
-        delta=round(r['iaf']-r_ant[sid]['iaf'],1) if sid in r_ant else None
-        cor=cor_class(r['classificacao']); em=emoji_class(r['classificacao'])
-        atencao=r['iaf']<75
-        receita_sup=sum(r.get(cv,0) for cv,_,_ in MARCAS_CFG)
-        bg_card,tc_card=_cor_bg(r['iaf'])
-        col1,col2=st.columns([1,1])
-        with col1:
-            delta_html=""
-            if delta is not None:
-                dc="#16a34a" if delta>=0 else "#dc2626"
-                delta_html=f'<span style="font-size:10px;color:{dc}">{"▲" if delta>=0 else "▼"}{abs(delta):.1f}%</span>'
-            warn_html='<span style="font-size:10px;background:#fee2e2;color:#dc2626;padding:1px 5px;border-radius:4px;margin-left:4px">atenção</span>' if atencao else ""
-            v_cab=r.get('valor_cabelos',0); m_cab=float(meta.get('meta_cabelos',0))
-            v_mak=r.get('valor_make',0); m_mak=float(meta.get('meta_make',0))
-            p_cab_pct=r.get('pct_cabelos',0); m_cab_pct=float(meta.get('meta_pct_cabelos',0))
-            p_mak_pct=r.get('pct_make',0); m_mak_pct=float(meta.get('meta_pct_make',0))
-            pct_cab_r=v_cab/m_cab*100 if m_cab>0 else 0
-            pct_mak_r=v_mak/m_mak*100 if m_mak>0 else 0
-            pct_cab_p=p_cab_pct/m_cab_pct*100 if m_cab_pct>0 else 0
-            pct_mak_p=p_mak_pct/m_mak_pct*100 if m_mak_pct>0 else 0
-            bg_cab,tc_cab=_cor_bg(min(pct_cab_r,pct_cab_p) if pct_cab_r>0 and pct_cab_p>0 else max(pct_cab_r,pct_cab_p))
-            bg_mak,tc_mak=_cor_bg(min(pct_mak_r,pct_mak_p) if pct_mak_r>0 and pct_mak_p>0 else max(pct_mak_r,pct_mak_p))
-            ind_html=""
-            for cv,cm,label in [('valor_boticario','meta_boticario','Boticário'),('valor_eudora','meta_eudora','Eudora'),('valor_oui','meta_oui','OUI'),('valor_qdb','meta_qdb','QDB')]:
-                v=r.get(cv,0); m=float(meta.get(cm,0)); pct=v/m*100 if m>0 else 0
-                ind_html+=semaforo_linha(pct,label,fmt_moeda(v),fmt_moeda(m))
-            ic_cab="🟢" if pct_cab_r>=100 and pct_cab_p>=100 else ("🟡" if pct_cab_r>=95 or pct_cab_p>=95 else ("🔴" if pct_cab_r>0 or pct_cab_p>0 else "⚪"))
-            ind_html+=(f'<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-radius:6px;background:{bg_cab};margin-bottom:3px">'
-                      f'<span style="font-size:11px;color:{tc_cab}">{ic_cab} Cabelos</span>'
-                      f'<div style="display:flex;align-items:center;gap:8px">'
-                      f'<span style="font-size:11px;font-weight:600;color:{tc_cab}">{fmt_moeda(v_cab)}</span><span style="font-size:10px;color:{tc_cab}88">R$ {pct_cab_r:.0f}%</span>'
-                      f'<span style="font-size:11px;font-weight:600;color:{tc_cab}">{fmt_pct(p_cab_pct)}</span><span style="font-size:10px;color:{tc_cab}88">% {pct_cab_p:.0f}%</span>'
-                      f'</div></div>')
-            ic_mak="🟢" if pct_mak_r>=100 and pct_mak_p>=100 else ("🟡" if pct_mak_r>=95 or pct_mak_p>=95 else ("🔴" if pct_mak_r>0 or pct_mak_p>0 else "⚪"))
-            ind_html+=(f'<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-radius:6px;background:{bg_mak};margin-bottom:3px">'
-                      f'<span style="font-size:11px;color:{tc_mak}">{ic_mak} Make</span>'
-                      f'<div style="display:flex;align-items:center;gap:8px">'
-                      f'<span style="font-size:11px;font-weight:600;color:{tc_mak}">{fmt_moeda(v_mak)}</span><span style="font-size:10px;color:{tc_mak}88">R$ {pct_mak_r:.0f}%</span>'
-                      f'<span style="font-size:11px;font-weight:600;color:{tc_mak}">{fmt_pct(p_mak_pct)}</span><span style="font-size:10px;color:{tc_mak}88">% {pct_mak_p:.0f}%</span>'
-                      f'</div></div>')
-            for cv,cm,label in [('pct_multimarcas','meta_multimarcas','Multimarcas'),('pct_atividade','meta_atividade','Atividade')]:
-                v=r.get(cv,0); m=float(meta.get(cm,0)); pct=v/m*100 if m>0 else 0
-                ind_html+=semaforo_linha(pct,label,fmt_pct(v),fmt_pct(m))
-            st.markdown(f'<div style="background:{bg_card};border-radius:10px;padding:14px;border:1px solid {tc_card}22"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-weight:700;font-size:13px;color:#0f172a">{nome}{warn_html}</span><span style="background:{cor};color:white;padding:2px 8px;border-radius:10px;font-size:11px">{em} {r["classificacao"]}</span></div><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px"><span style="font-size:30px;font-weight:700;color:{tc_card}">{fmt_pct(r["iaf"])}</span><span style="font-size:11px;color:{tc_card}88">{r["pontuacao_obtida"]:.0f}/{r["pontuacao_maxima"]:.0f} pts {delta_html}</span></div><div style="background:{tc_card}22;border-radius:3px;height:4px;overflow:hidden;margin-bottom:8px"><div style="background:{tc_card};width:{min(r["iaf"],100):.1f}%;height:100%;border-radius:3px"></div></div><div style="font-size:11px;color:{tc_card}88;margin-bottom:6px">Receita: <b style="color:{tc_card}">{fmt_moeda(receita_sup)}</b> | Ativos: <b style="color:{tc_card}">{r.get("ativos",0)}</b></div><div>{ind_html}</div></div>',unsafe_allow_html=True)
-        with col2:
-            cats=['Boticário','Eudora','OUI','QDB','Cabelos','Make','Multimarcas','Atividade']
-            mts=[float(meta.get(k,0)) for k in ['meta_boticario','meta_eudora','meta_oui','meta_qdb','meta_cabelos','meta_make','meta_multimarcas','meta_atividade']]
-            vrs=[min(r.get(cv,0)/m*100,150) if m>0 else 0 for (cv,_,_),m in zip([('valor_boticario','',''),('valor_eudora','',''),('valor_oui','',''),('valor_qdb','',''),('valor_cabelos','',''),('valor_make','',''),('pct_multimarcas','',''),('pct_atividade','','')],mts)]
-            rgba_m={'Diamante':'rgba(30,58,95,0.15)','Ouro':'rgba(146,64,14,0.15)','Prata':'rgba(71,85,105,0.15)','Bronze':'rgba(120,53,15,0.15)'}
-            fig_r=go.Figure()
-            fig_r.add_trace(go.Scatterpolar(r=vrs+[vrs[0]],theta=cats+[cats[0]],fill='toself',fillcolor=rgba_m.get(r['classificacao'],'rgba(100,116,139,0.15)'),line=dict(color=cor,width=2),name=nome))
-            fig_r.add_trace(go.Scatterpolar(r=[100]*len(cats)+[100],theta=cats+[cats[0]],line=dict(color='#e2e8f0',width=1,dash='dot'),showlegend=False))
-            fig_r.update_layout(polar=dict(radialaxis=dict(visible=True,range=[0,150],ticksuffix="%",tickfont=dict(size=9),gridcolor='#f1f5f9'),angularaxis=dict(tickfont=dict(size=10))),showlegend=False,height=300,margin=dict(t=20,b=20,l=20,r=20),paper_bgcolor='white')
-            st.plotly_chart(fig_r,use_container_width=True)
-        st.markdown("")
-    st.markdown("#### 📈 Evolução de Ativos por Ciclo")
-    evol_at=[]
+        m_bot=float(meta.get('meta_boticario',0)); m_eud=float(meta.get('meta_eudora',0))
+        m_mu=float(meta.get('meta_multimarcas',0)); m_cab=float(meta.get('meta_pct_cabelos',0))
+        m_mak=float(meta.get('meta_pct_make',0)); m_at=float(meta.get('meta_atividade',0))
+        rows.append({
+            'Supervisora':nm,'IAF':r['iaf'],'Classificação':r['classificacao'],
+            'Bot%':r.get('valor_boticario',0)/m_bot*100 if m_bot>0 else 0,
+            'Eud%':r.get('valor_eudora',0)/m_eud*100 if m_eud>0 else 0,
+            'OUI_R':r.get('valor_oui',0),'QDB_R':r.get('valor_qdb',0),
+            'Multi%':r['pct_multimarcas'],'Multi_meta':m_mu,
+            'Cab%':r['pct_cabelos'],'Cab_meta':m_cab,
+            'Make%':r['pct_make'],'Make_meta':m_mak,
+            'Ativ%':r['pct_atividade'],'Ativ_meta':m_at,
+            'Bot_meta':m_bot,'Eud_meta':m_eud
+        })
+    df_tab=pd.DataFrame(rows).sort_values('IAF',ascending=False)
+    iaf_tag='<span style="background:#1e3a5f;color:#93c5fd;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;margin-left:4px">IAF</span>'
+    html='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:900px">'
+    html+=f'<thead><tr style="border-bottom:1px solid #222">'
+    headers=[('Supervisora','left'),('IAF'+iaf_tag,'right'),('Boticário'+iaf_tag,'right'),('Eudora'+iaf_tag,'right'),('OUI R$','right'),('QDB R$','right'),('Multimarcas'+iaf_tag,'right'),('Penet. Cab'+iaf_tag,'right'),('Penet. Make'+iaf_tag,'right'),('Atividade'+iaf_tag,'right')]
+    for h,align in headers:
+        html+=f'<th style="text-align:{align};padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">{h}</th>'
+    html+='</tr></thead><tbody>'
+    def pct_color(v,m):
+        if m==0: return '#475569'
+        p=v/m*100
+        if p>=100: return '#4ade80'
+        if p>=95: return '#fbbf24'
+        return '#f87171'
+    for _,r in df_tab.iterrows():
+        ic=iaf_color(r['IAF']); cl_badge=badge_iaf(r['Classificação'])
+        html+=(f'<tr style="border-bottom:1px solid #111">'
+               f'<td style="padding:10px;color:white;font-weight:500;font-size:13px;white-space:nowrap">{r["Supervisora"]} {cl_badge}</td>'
+               f'<td style="padding:10px;text-align:right;color:{ic};font-weight:700;font-size:14px">{fmt_pct(r["IAF"])}</td>'
+               f'<td style="padding:10px;text-align:right;color:{pct_color(r["Bot%"],100)};font-size:12px">{fmt_pct(r["Bot%"])}</td>'
+               f'<td style="padding:10px;text-align:right;color:{pct_color(r["Eud%"],100)};font-size:12px">{fmt_pct(r["Eud%"])}</td>'
+               f'<td style="padding:10px;text-align:right;color:#475569;font-size:12px">{fmt_moeda(r["OUI_R"])}</td>'
+               f'<td style="padding:10px;text-align:right;color:#475569;font-size:12px">{fmt_moeda(r["QDB_R"])}</td>'
+               f'<td style="padding:10px;text-align:right;color:{pct_color(r["Multi%"],r["Multi_meta"])};font-size:12px">{fmt_pct(r["Multi%"])}</td>'
+               f'<td style="padding:10px;text-align:right;color:{pct_color(r["Cab%"],r["Cab_meta"])};font-size:12px">{fmt_pct(r["Cab%"])}</td>'
+               f'<td style="padding:10px;text-align:right;color:{pct_color(r["Make%"],r["Make_meta"])};font-size:12px">{fmt_pct(r["Make%"])}</td>'
+               f'<td style="padding:10px;text-align:right;color:{pct_color(r["Ativ%"],r["Ativ_meta"])};font-size:12px">{fmt_pct(r["Ativ%"])}</td>'
+               f'</tr>')
+    html+='</tbody></table></div>'
+    st.markdown(html,unsafe_allow_html=True)
+    # Gráfico evolução IAF
+    st.markdown("<div style='height:24px'></div>",unsafe_allow_html=True)
+    st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">Evolução IAF por Ciclo</p>',unsafe_allow_html=True)
+    evol=[]
     for c in ciclos[-6:]:
         for rv in get_resultados(c['id'],tipo='financeiro'):
-            evol_at.append({'Ciclo':c['nome'],'Supervisora':sid_nm.get(rv['setor_id'],str(rv['setor_id'])),'Ativos':rv['ativos']})
-    if evol_at:
-        fig_at=px.line(pd.DataFrame(evol_at),x='Ciclo',y='Ativos',color='Supervisora',markers=True,color_discrete_sequence=['#1e3a5f','#2563eb','#64748b','#92400e','#16a34a','#dc2626'])
-        fig_at.update_layout(height=280,margin=dict(t=10,b=10),plot_bgcolor='white',paper_bgcolor='white')
-        st.plotly_chart(fig_at,use_container_width=True)
-    st.markdown("#### 📈 Evolução de Receita do Grupo")
-    evol_rec=[]
+            evol.append({'Ciclo':c['nome'],'Supervisora':sid_nm.get(rv['setor_id'],str(rv['setor_id'])),'IAF':rv['iaf']})
+    if evol:
+        fig=px.line(pd.DataFrame(evol),x='Ciclo',y='IAF',color='Supervisora',markers=True,color_discrete_sequence=['#4ade80','#fbbf24','#60a5fa','#f87171','#a78bfa','#fb923c'])
+        fig.update_layout(height=280,margin=dict(t=10,b=10),plot_bgcolor='#000',paper_bgcolor='#000',legend=dict(font=dict(color='#94a3b8',size=11)),xaxis=dict(color='#94a3b8',gridcolor='#1e1e1e'),yaxis=dict(color='#94a3b8',gridcolor='#1e1e1e',ticksuffix='%'))
+        st.plotly_chart(fig,use_container_width=True)
+
+# =============================================
+# IAF
+# =============================================
+def pg_iaf(cid):
+    ciclo=get_ciclo_ativo(); ciclos=get_ciclos()
+    cs=next((c for c in ciclos if c['id']==cid),ciclo) if cid else ciclo
+    if not cs: st.warning("⚠️ Sem ciclo ativo."); return
+    st.markdown('<h1 style="color:white;font-size:22px;font-weight:700;margin-bottom:16px">🎯 IAF — Instrumento de Avaliação</h1>',unsafe_allow_html=True)
+    cfg={r['chave']:r['valor'] for r in (get_sb().table("configuracoes").select("chave,valor").execute().data or [])}
+    res_all=get_resultados(cs['id'])
+    if not res_all: st.info("Sem dados para este ciclo."); return
+    todos_s=get_sb().table("setores").select("id,nome,tipo").execute().data or []
+    sid_nm={s['id']:s['nome'] for s in todos_s}
+    sid_tipo={s['id']:s['tipo'] for s in todos_s}
+    contagem={'Diamante':0,'Ouro':0,'Prata':0,'Bronze':0,'Não Classificado':0}
+    for r in res_all: contagem[r['classificacao']]=contagem.get(r['classificacao'],0)+1
+    # Cards classificação
+    card_cls=[
+        ('Diamante','💎','#f0f9ff','#1e3a5f'),('Ouro','🥇','#fffbeb','#92400e'),
+        ('Prata','🥈','#f8fafc','#475569'),('Bronze','🥉','#fff7ed','#78350f'),
+        ('Não Classificado','—','#0f0f0f','#475569')
+    ]
+    html='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px">'
+    for cl,em,bg,tc in card_cls:
+        html+=(f'<div style="border:1px solid white;border-radius:10px;padding:14px;background:{bg};text-align:center">'
+               f'<div style="font-size:10px;color:{tc};text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">{cl}</div>'
+               f'<div style="font-size:28px;font-weight:700;color:{tc}">{contagem.get(cl,0)}</div>'
+               f'<div style="font-size:11px;color:{tc}88;margin-top:4px">{em}</div></div>')
+    html+='</div>'
+    st.markdown(html,unsafe_allow_html=True)
+    # Ranking
+    st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">Ranking Geral</p>',unsafe_allow_html=True)
+    res_s=sorted(res_all,key=lambda x:x['iaf'],reverse=True)
+    faixas={'Diamante':float(cfg.get('faixa_diamante_min',95)),'Ouro':float(cfg.get('faixa_ouro_min',85)),'Prata':float(cfg.get('faixa_prata_min',75)),'Bronze':float(cfg.get('faixa_bronze_min',65))}
+    ordem_faixas=['Diamante','Ouro','Prata','Bronze']
+    def gap_prox(iaf,cl,pts,mx):
+        idx=ordem_faixas.index(cl) if cl in ordem_faixas else -1
+        if idx<=0: return None
+        prox_faixa=ordem_faixas[idx-1]
+        pts_needed=int(faixas[prox_faixa]/100*mx)-pts
+        return pts_needed if pts_needed>0 else None
+    html_rank='<table style="width:100%;border-collapse:collapse">'
+    html_rank+=('<thead><tr style="border-bottom:1px solid #222">'
+                '<th style="text-align:left;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase"># Supervisora</th>'
+                '<th style="text-align:center;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Tipo</th>'
+                '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">IAF</th>'
+                '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Pontuação</th>'
+                '<th style="text-align:center;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Classificação</th>'
+                '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Falta p/ subir</th>'
+                '</tr></thead><tbody>')
+    for pos,r in enumerate(res_s,1):
+        nm=sid_nm.get(r['setor_id'],str(r['setor_id']))
+        tipo=sid_tipo.get(r['setor_id'],'—').capitalize()
+        ic=iaf_color(r['iaf'])
+        pts=int(r['pontuacao_obtida']); mx=int(r['pontuacao_maxima'])
+        gap_pts=gap_prox(r['iaf'],r['classificacao'],pts,mx)
+        gap_str=f'+{gap_pts} pts' if gap_pts else '✓ Máximo'
+        gap_c='#4ade80' if not gap_pts else ('#4ade80' if gap_pts<=30 else '#fbbf24' if gap_pts<=80 else '#f87171')
+        pos_bg=["#f59e0b","#94a3b8","#92400e"][pos-1] if pos<=3 else "#1e293b"
+        pos_tc="black" if pos==1 else "white"
+        html_rank+=(f'<tr style="border-bottom:1px solid #111">'
+                    f'<td style="padding:10px"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:{pos_bg};color:{pos_tc};font-size:11px;font-weight:700;margin-right:10px">{pos}</span>'
+                    f'<span style="color:white;font-weight:500;font-size:13px">{nm}</span></td>'
+                    f'<td style="padding:10px;text-align:center"><span style="font-size:10px;color:#334155;background:#111;padding:2px 6px;border-radius:4px">{tipo}</span></td>'
+                    f'<td style="padding:10px;text-align:right;color:{ic};font-weight:700;font-size:14px">{fmt_pct(r["iaf"])}</td>'
+                    f'<td style="padding:10px;text-align:right;color:#64748b;font-size:12px">{pts} / {mx}</td>'
+                    f'<td style="padding:10px;text-align:center">{badge_iaf(r["classificacao"])}</td>'
+                    f'<td style="padding:10px;text-align:right;color:{gap_c};font-size:12px">{gap_str}</td>'
+                    f'</tr>')
+    html_rank+='</tbody></table>'
+    st.markdown(html_rank,unsafe_allow_html=True)
+    # Gráfico evolução
+    st.markdown("<div style='height:24px'></div>",unsafe_allow_html=True)
+    st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">Evolução IAF por Ciclo</p>',unsafe_allow_html=True)
+    evol=[]
     for c in ciclos[-6:]:
-        rec_c=float(get_config(f"receita_ativos_{c['id']}",0) or 0)
-        if rec_c==0:
-            rl=get_resultados(c['id'],tipo='financeiro')
-            if rl: rec_c=sum(pd.DataFrame(rl)[cv].sum() for cv,_,_ in MARCAS_CFG)
-        if rec_c>0: evol_rec.append({'Ciclo':c['nome'],'Receita':rec_c})
-    if evol_rec:
-        fig_rec=go.Figure(go.Scatter(x=[d['Ciclo'] for d in evol_rec],y=[d['Receita'] for d in evol_rec],mode='lines+markers',line=dict(color='#1e3a5f',width=2),marker=dict(size=8,color='#2563eb')))
-        fig_rec.update_layout(height=240,margin=dict(t=10,b=10),plot_bgcolor='white',paper_bgcolor='white')
-        fig_rec.update_yaxes(tickprefix="R$ ",tickformat=",.0f")
-        st.plotly_chart(fig_rec,use_container_width=True)
+        for rv in get_resultados(c['id']):
+            nm=sid_nm.get(rv['setor_id'],str(rv['setor_id']))
+            evol.append({'Ciclo':c['nome'],'Supervisora':nm,'IAF':rv['iaf']})
+    if evol:
+        fig=px.line(pd.DataFrame(evol),x='Ciclo',y='IAF',color='Supervisora',markers=True,color_discrete_sequence=['#4ade80','#fbbf24','#60a5fa','#f87171','#a78bfa','#fb923c','#34d399','#f472b6'])
+        fig.update_layout(height=300,margin=dict(t=10,b=10),plot_bgcolor='#000',paper_bgcolor='#000',legend=dict(font=dict(color='#94a3b8',size=11)),xaxis=dict(color='#94a3b8',gridcolor='#1e1e1e'),yaxis=dict(color='#94a3b8',gridcolor='#1e1e1e',ticksuffix='%'))
+        st.plotly_chart(fig,use_container_width=True)
 
 # =============================================
 # ER
 # =============================================
 def pg_er(cid):
-    requer_perfil("gerencia")
     ciclo=get_ciclo_ativo(); ciclos=get_ciclos()
     cs=next((c for c in ciclos if c['id']==cid),ciclo) if cid else ciclo
     if not cs: st.warning("⚠️ Sem ciclo ativo."); return
-    st.title("🏪 ER — Espaço Revendedor")
-    st.markdown("---")
+    st.markdown('<h1 style="color:white;font-size:22px;font-weight:700;margin-bottom:16px">🏪 ER — Espaço Revendedor</h1>',unsafe_allow_html=True)
     res=get_resultados_er(cs['id'])
     if not res: st.info("📊 Sem dados ER para este ciclo."); return
     df=pd.DataFrame(res)
@@ -634,119 +626,184 @@ def pg_er(cid):
     rev_cab=int(get_config(f"er_rev_cab_{cs['id']}",0) or 0)
     pct_make_er=rev_make/rev_er*100 if rev_er>0 else 0
     pct_cab_er=rev_cab/rev_er*100 if rev_er>0 else 0
-    st.markdown("#### Indicadores Principais")
-    c1,c2,c3,c4=st.columns(4)
-    with c1: card_kpi("Ativos no ER",fmt_int(rev_er),f"× {fmt_int(total_ativos)} ativos total" if total_ativos>0 else None)
-    with c2: card_kpi("No. RV. Multimarcas",fmt_int(rev_multi),"dentre os que vieram ao ER")
-    with c3: card_kpi("Compraram Make",f"{fmt_int(rev_make)} ({fmt_pct(pct_make_er)})",f"de {fmt_int(rev_er)} no ER")
-    with c4: card_kpi("Compraram Cabelos",f"{fmt_int(rev_cab)} ({fmt_pct(pct_cab_er)})",f"de {fmt_int(rev_er)} no ER")
-    st.markdown("---")
-    st.markdown("#### 🏆 Ranking Multimarca")
+    # KPIs
+    html_kpi=f'''<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
+    <div style="border:1px solid white;border-radius:12px;padding:16px;background:#0f0f0f">
+        <div style="font-size:10px;color:#47556988;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Ativos no ER</div>
+        <div style="font-size:22px;font-weight:700;color:#94a3b8">{fmt_int(rev_er)}</div>
+        <div style="font-size:11px;color:#47556988;margin-top:4px">× {fmt_int(total_ativos)} ativos total</div></div>
+    <div style="border:1px solid white;border-radius:12px;padding:16px;background:#0f0f0f">
+        <div style="font-size:10px;color:#47556988;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">No. RV. Multimarcas</div>
+        <div style="font-size:22px;font-weight:700;color:#94a3b8">{fmt_int(rev_multi)}</div>
+        <div style="font-size:11px;color:#47556988;margin-top:4px">dentre os que vieram ao ER</div></div>
+    <div style="border:1px solid white;border-radius:12px;padding:16px;background:#0f0f0f">
+        <div style="font-size:10px;color:#47556988;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Compraram Make</div>
+        <div style="font-size:22px;font-weight:700;color:#94a3b8">{fmt_int(rev_make)} ({fmt_pct(pct_make_er)})</div>
+        <div style="font-size:11px;color:#47556988;margin-top:4px">de {fmt_int(rev_er)} no ER</div></div>
+    <div style="border:1px solid white;border-radius:12px;padding:16px;background:#0f0f0f">
+        <div style="font-size:10px;color:#47556988;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Compraram Cabelos</div>
+        <div style="font-size:22px;font-weight:700;color:#94a3b8">{fmt_int(rev_cab)} ({fmt_pct(pct_cab_er)})</div>
+        <div style="font-size:11px;color:#47556988;margin-top:4px">de {fmt_int(rev_er)} no ER</div></div>
+    </div>'''
+    st.markdown(html_kpi,unsafe_allow_html=True)
+    # Ranking multimarca
+    st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">Ranking por Caixa</p>',unsafe_allow_html=True)
     df['pedidos_multi']=df['total_pedidos']-df['pedidos_nao_multimarca']
     df['pct_multi']=100-df['pct_nao_multimarca']
     tab_m,tab_c,tab_mk=st.tabs(["Multimarcas","Cabelos","Make"])
-    def rank_caixa(df_s,col_v):
-        for pos,row in df_s.sort_values(col_v,ascending=False).reset_index(drop=True).iterrows():
-            pos_n=pos+1; v=row[col_v]; bg,tc=_cor_bg(v)
-            ic="🟢" if v>=70 else ("🟡" if v>=50 else "🔴")
-            pb=["#f59e0b","#94a3b8","#92400e"][pos_n-1] if pos_n<=3 else "#e2e8f0"; pt="white" if pos_n<=3 else "#475569"
-            n_ped=int(row.get('pedidos_multi',0))
-            st.markdown(f'<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:{bg};border-radius:8px;border:1px solid {tc}22;margin-bottom:4px"><div style="min-width:26px;height:26px;border-radius:50%;background:{pb};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:{pt}">{pos_n}</div><span style="flex:1;font-size:13px;font-weight:600;color:#0f172a">{row["usuario_finalizacao"]}</span><span style="font-size:12px;color:{tc}88">{n_ped} pedidos</span><span style="font-size:15px;font-weight:700;color:{tc}">{ic} {fmt_pct(v)}</span></div>',unsafe_allow_html=True)
-    with tab_m: rank_caixa(df,'pct_multi')
+    def rank_caixa_er(dados,col_v,col_n):
+        html='<table style="width:100%;border-collapse:collapse">'
+        for pos,row in enumerate(sorted(dados,key=lambda x:x[col_v],reverse=True),1):
+            v=row[col_v]; n=int(row.get(col_n,0))
+            tc='#4ade80' if v>=70 else ('#fbbf24' if v>=50 else '#f87171')
+            pb=["#f59e0b","#94a3b8","#92400e"][pos-1] if pos<=3 else "#1e293b"
+            ptc="black" if pos==1 else "white"
+            nm=row.get('usuario_finalizacao',row.get('usuario','—'))
+            html+=(f'<tr style="border-bottom:1px solid #111">'
+                   f'<td style="padding:10px"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:{pb};color:{ptc};font-size:11px;font-weight:700;margin-right:10px">{pos}</span>'
+                   f'<span style="color:white;font-size:13px;font-weight:500">{nm}</span></td>'
+                   f'<td style="padding:10px;text-align:right;color:#475569;font-size:12px">{n} pedidos</td>'
+                   f'<td style="padding:10px;text-align:right;color:{tc};font-weight:700;font-size:15px">{fmt_pct(v)}</td></tr>')
+        html+='</table>'
+        st.markdown(html,unsafe_allow_html=True)
+    with tab_m:
+        dados_m=[{'usuario_finalizacao':r['usuario_finalizacao'],'pct_multi':100-r['pct_nao_multimarca'],'pedidos_multi':r['total_pedidos']-r['pedidos_nao_multimarca']} for _,r in df.iterrows()]
+        rank_caixa_er(dados_m,'pct_multi','pedidos_multi')
     with tab_c:
         rank_cab=_json.loads(get_config(f"er_rank_cab_{cs['id']}","[]") or "[]")
-        if rank_cab:
-            for pos,row in enumerate(sorted(rank_cab,key=lambda x:x['pct_cab'],reverse=True),1):
-                v=row['pct_cab']; bg,tc=_cor_bg(v)
-                ic="🟢" if v>=70 else ("🟡" if v>=50 else "🔴")
-                pb=["#f59e0b","#94a3b8","#92400e"][pos-1] if pos<=3 else "#e2e8f0"; pt="white" if pos<=3 else "#475569"
-                st.markdown(f'<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:{bg};border-radius:8px;border:1px solid {tc}22;margin-bottom:4px"><div style="min-width:26px;height:26px;border-radius:50%;background:{pb};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:{pt}">{pos}</div><span style="flex:1;font-size:13px;font-weight:600;color:#0f172a">{row["usuario"]}</span><span style="font-size:12px;color:{tc}88">{int(row["n_cab"])} pedidos</span><span style="font-size:15px;font-weight:700;color:{tc}">{ic} {fmt_pct(v)}</span></div>',unsafe_allow_html=True)
-        else: st.info("Reprocesse os dados para ver este ranking.")
+        if rank_cab: rank_caixa_er(rank_cab,'pct_cab','n_cab')
+        else: st.info("Reprocesse os dados.")
     with tab_mk:
         rank_mak=_json.loads(get_config(f"er_rank_mak_{cs['id']}","[]") or "[]")
-        if rank_mak:
-            for pos,row in enumerate(sorted(rank_mak,key=lambda x:x['pct_mak'],reverse=True),1):
-                v=row['pct_mak']; bg,tc=_cor_bg(v)
-                ic="🟢" if v>=70 else ("🟡" if v>=50 else "🔴")
-                pb=["#f59e0b","#94a3b8","#92400e"][pos-1] if pos<=3 else "#e2e8f0"; pt="white" if pos<=3 else "#475569"
-                st.markdown(f'<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:{bg};border-radius:8px;border:1px solid {tc}22;margin-bottom:4px"><div style="min-width:26px;height:26px;border-radius:50%;background:{pb};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:{pt}">{pos}</div><span style="flex:1;font-size:13px;font-weight:600;color:#0f172a">{row["usuario"]}</span><span style="font-size:12px;color:{tc}88">{int(row["n_mak"])} pedidos</span><span style="font-size:15px;font-weight:700;color:{tc}">{ic} {fmt_pct(v)}</span></div>',unsafe_allow_html=True)
-        else: st.info("Reprocesse os dados para ver este ranking.")
-    st.markdown("")
+        if rank_mak: rank_caixa_er(rank_mak,'pct_mak','n_mak')
+        else: st.info("Reprocesse os dados.")
+
+    # Análise por vendedor
+    st.markdown("<div style='height:20px'></div>",unsafe_allow_html=True)
+    st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">Análise por Vendedor (conversão)</p>',unsafe_allow_html=True)
+    vend_data=_json.loads(get_config(f"er_vend_conv_{cs['id']}","[]") or "[]")
+    if vend_data:
+        html_v='<table style="width:100%;border-collapse:collapse">'
+        html_v+=('<thead><tr style="border-bottom:1px solid #222">'
+                 '<th style="text-align:left;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Vendedor</th>'
+                 '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Atendidos</th>'
+                 '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Multimarcas</th>'
+                 '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Cabelos</th>'
+                 '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Make</th>'
+                 '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Ticket Méd.</th>'
+                 '</tr></thead><tbody>')
+        for v in sorted(vend_data,key=lambda x:x.get('atendidos',0),reverse=True):
+            nm=v.get('vendedor','—'); at=int(v.get('atendidos',0))
+            pmu=float(v.get('pct_multi',0)); pcb=float(v.get('pct_cab',0)); pmk=float(v.get('pct_make',0))
+            tk=float(v.get('ticket',0))
+            def cc(p): return '#4ade80' if p>=70 else ('#fbbf24' if p>=50 else '#f87171')
+            html_v+=(f'<tr style="border-bottom:1px solid #111">'
+                     f'<td style="padding:10px;color:white;font-weight:500;font-size:13px">{nm}</td>'
+                     f'<td style="padding:10px;text-align:right;color:#94a3b8;font-size:13px">{at}</td>'
+                     f'<td style="padding:10px;text-align:right;color:{cc(pmu)};font-size:13px;font-weight:600">{fmt_pct(pmu)}</td>'
+                     f'<td style="padding:10px;text-align:right;color:{cc(pcb)};font-size:13px;font-weight:600">{fmt_pct(pcb)}</td>'
+                     f'<td style="padding:10px;text-align:right;color:{cc(pmk)};font-size:13px;font-weight:600">{fmt_pct(pmk)}</td>'
+                     f'<td style="padding:10px;text-align:right;color:#64748b;font-size:12px">{fmt_moeda(tk)}</td>'
+                     f'</tr>')
+        html_v+='</tbody></table>'
+        st.markdown(html_v,unsafe_allow_html=True)
+        # Não convertidos
+        st.markdown("<div style='height:16px'></div>",unsafe_allow_html=True)
+        st.markdown('<p style="color:#f87171;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">⚠️ Revendedores não convertidos — vendedores responsáveis</p>',unsafe_allow_html=True)
+        nao_conv=_json.loads(get_config(f"er_nao_conv_{cs['id']}","[]") or "[]")
+        if nao_conv:
+            tab_nm,tab_nc,tab_nmk=st.tabs(["Multimarcas","Cabelos","Make"])
+            def tabela_nao_conv(dados,key):
+                if not dados: st.info("Todos convertidos! 🎉"); return
+                html_nc='<table style="width:100%;border-collapse:collapse">'
+                html_nc+=('<thead><tr style="border-bottom:1px solid #222">'
+                          '<th style="text-align:left;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Revendedor</th>'
+                          '<th style="text-align:left;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Vendedores que atenderam</th>'
+                          '</tr></thead><tbody>')
+                for item in dados[:50]:
+                    rv=item.get('revendedor','—'); vends=', '.join(item.get('vendedores',[]))
+                    html_nc+=(f'<tr style="border-bottom:1px solid #111">'
+                              f'<td style="padding:8px 10px;color:#cbd5e1;font-size:12px">{rv}</td>'
+                              f'<td style="padding:8px 10px;color:#f87171;font-size:12px">{vends}</td>'
+                              f'</tr>')
+                html_nc+='</tbody></table>'
+                st.markdown(html_nc,unsafe_allow_html=True)
+            nc_multi=[x for x in nao_conv if x.get('tipo')=='multi']
+            nc_cab=[x for x in nao_conv if x.get('tipo')=='cab']
+            nc_mak=[x for x in nao_conv if x.get('tipo')=='make']
+            with tab_nm: tabela_nao_conv(nc_multi,'multi')
+            with tab_nc: tabela_nao_conv(nc_cab,'cab')
+            with tab_nmk: tabela_nao_conv(nc_mak,'make')
+    else:
+        st.info("ℹ️ Faça upload da planilha Vendedor para ver análise de conversão por vendedor.")
+
+    # Bairro e segmentação
+    st.markdown("<div style='height:20px'></div>",unsafe_allow_html=True)
     bairro_data=_json.loads(get_config(f"er_bairro_{cs['id']}","[]") or "[]")
     seg_data=_json.loads(get_config(f"er_seg_{cs['id']}","[]") or "[]")
-    freq_data=_json.loads(get_config(f"er_freq_{cs['id']}","[]") or "[]")
     if bairro_data or seg_data:
         col_a,col_b=st.columns(2)
         with col_a:
-            st.markdown('<p style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px">📍 Por Bairro</p>',unsafe_allow_html=True)
-            html_b='<div style="background:white;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">'
-            for i,row in enumerate(bairro_data):
-                bg="#f8fafc" if i%2==0 else "white"
-                html_b+=f'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 12px;background:{bg}"><span style="font-size:12px;color:#475569">{row["Bairro"]}</span><span style="font-size:12px;font-weight:700;color:#1e293b">{row["pct"]:.1f}%</span></div>'
+            st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:6px">📍 Por Bairro</p>',unsafe_allow_html=True)
+            html_b='<div style="background:#0a0a0a;border:1px solid #1e1e1e;border-radius:8px;overflow:hidden">'
+            for i,row in enumerate(bairro_data[:15]):
+                bg="#0f0f0f" if i%2==0 else "#0a0a0a"
+                html_b+=f'<div style="display:flex;justify-content:space-between;padding:6px 12px;background:{bg}"><span style="font-size:12px;color:#94a3b8">{row["Bairro"]}</span><span style="font-size:12px;font-weight:700;color:#cbd5e1">{row["pct"]:.1f}%</span></div>'
             html_b+='</div>'
             st.markdown(html_b,unsafe_allow_html=True)
         with col_b:
-            st.markdown('<p style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px">🏅 Por Segmentação</p>',unsafe_allow_html=True)
-            html_s='<div style="background:white;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0"><div style="display:flex;justify-content:space-between;padding:5px 12px;background:#f8fafc;border-bottom:1px solid #e2e8f0"><span style="font-size:10px;color:#94a3b8;font-weight:700">SEGMENTAÇÃO</span><span style="font-size:10px;color:#94a3b8;font-weight:700">RVs · % · TICKET MÉD.</span></div>'
+            st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:6px">🏅 Por Segmentação</p>',unsafe_allow_html=True)
+            html_s='<div style="background:#0a0a0a;border:1px solid #1e1e1e;border-radius:8px;overflow:hidden"><div style="display:flex;justify-content:space-between;padding:5px 12px;background:#111;border-bottom:1px solid #1e1e1e"><span style="font-size:10px;color:#334155;font-weight:700">SEGMENTAÇÃO</span><span style="font-size:10px;color:#334155;font-weight:700">RVs · % · TICKET</span></div>'
             for row in seg_data:
                 tk_str=f"R$ {row.get('ticket',0):,.0f}".replace(",",".") if row.get('ticket',0)>0 else "—"
-                html_s+=f'<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-bottom:1px solid #f8fafc"><span style="font-size:12px;color:#475569">{row["seg"]}</span><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:#64748b">{int(row["rvs"])}</span><span style="font-size:12px;font-weight:700;color:#1e293b">{row["pct"]:.1f}%</span><span style="font-size:11px;color:#94a3b8;min-width:80px;text-align:right">{tk_str}</span></div></div>'
+                html_s+=f'<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-bottom:1px solid #111"><span style="font-size:12px;color:#94a3b8">{row["seg"]}</span><div style="display:flex;gap:10px;align-items:center"><span style="font-size:12px;color:#64748b">{int(row["rvs"])}</span><span style="font-size:12px;font-weight:700;color:#cbd5e1">{row["pct"]:.1f}%</span><span style="font-size:11px;color:#475569;min-width:80px;text-align:right">{tk_str}</span></div></div>'
             html_s+='</div>'
             st.markdown(html_s,unsafe_allow_html=True)
-        st.markdown("")
-        if freq_data:
-            st.markdown("#### 📅 Frequência por Dia")
-            fig3=go.Figure(go.Bar(x=[r['label'] for r in freq_data],y=[r['rvs'] for r in freq_data],marker_color='#2563eb',text=[r['rvs'] for r in freq_data],textposition='outside'))
-            fig3.update_layout(height=320,margin=dict(t=20,b=60),xaxis_tickangle=-45,yaxis_title="Revendedores Únicos",plot_bgcolor='white',paper_bgcolor='white')
-            st.plotly_chart(fig3,use_container_width=True)
-    else: st.info("ℹ️ Reprocesse os dados para ver análises detalhadas.")
-    st.markdown("#### 📊 Comparativo por Caixa")
-    df['pct_multi']=100-df['pct_nao_multimarca']
-    df_g=df.sort_values('pedidos_multi',ascending=False)
-    tc_list=[_cor_bg(p)[1] for p in df_g['pct_multi']]
-    fig=go.Figure(go.Bar(x=df_g['usuario_finalizacao'],y=df_g['pct_multi'],marker_color=tc_list,text=[fmt_pct(p) for p in df_g['pct_multi']],textposition='outside'))
-    fig.update_layout(height=320,margin=dict(t=10,b=10),plot_bgcolor='white',paper_bgcolor='white'); fig.update_yaxes(ticksuffix="%",title="% Multimarca")
+    # Frequência por dia
+    freq_data=_json.loads(get_config(f"er_freq_{cs['id']}","[]") or "[]")
+    if freq_data:
+        st.markdown("<div style='height:16px'></div>",unsafe_allow_html=True)
+        st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">📅 Frequência por Dia</p>',unsafe_allow_html=True)
+        fig3=go.Figure(go.Bar(x=[r['label'] for r in freq_data],y=[r['rvs'] for r in freq_data],marker_color='#2563eb',text=[r['rvs'] for r in freq_data],textposition='outside',textfont=dict(color='#94a3b8')))
+        fig3.update_layout(height=280,margin=dict(t=30,b=60),xaxis_tickangle=-45,plot_bgcolor='#000',paper_bgcolor='#000',xaxis=dict(color='#94a3b8',gridcolor='#1e1e1e'),yaxis=dict(color='#94a3b8',gridcolor='#1e1e1e',title='Revendedores Únicos'))
+        st.plotly_chart(fig3,use_container_width=True)
+    # Comparativo por caixa
+    st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">📊 Comparativo por Caixa</p>',unsafe_allow_html=True)
+    df_g=df.sort_values('pedidos_multi',ascending=False) if 'pedidos_multi' in df.columns else df
+    df_g['pct_multi']=100-df_g['pct_nao_multimarca']
+    tc_list=['#4ade80' if p>=70 else ('#fbbf24' if p>=50 else '#f87171') for p in df_g['pct_multi']]
+    fig=go.Figure(go.Bar(x=df_g['usuario_finalizacao'],y=df_g['pct_multi'],marker_color=tc_list,text=[fmt_pct(p) for p in df_g['pct_multi']],textposition='outside',textfont=dict(color='#94a3b8')))
+    fig.update_layout(height=280,margin=dict(t=30,b=10),plot_bgcolor='#000',paper_bgcolor='#000',xaxis=dict(color='#94a3b8',gridcolor='#1e1e1e'),yaxis=dict(color='#94a3b8',gridcolor='#1e1e1e',ticksuffix='%'))
     st.plotly_chart(fig,use_container_width=True)
-    evol=[]
-    for c in ciclos[-6:]:
-        for rv in get_resultados_er(c['id']):
-            evol.append({'Ciclo':c['nome'],'Caixa':rv['usuario_finalizacao'],'% Multimarca':100-rv['pct_nao_multimarca']})
-    if evol:
-        st.markdown("#### 📈 Evolução por Ciclo")
-        fig2=px.line(pd.DataFrame(evol),x='Ciclo',y='% Multimarca',color='Caixa',markers=True,color_discrete_sequence=['#1e3a5f','#2563eb','#64748b','#92400e','#16a34a'])
-        fig2.update_layout(height=280,margin=dict(t=10,b=10),plot_bgcolor='white',paper_bgcolor='white'); fig2.update_yaxes(ticksuffix="%")
-        st.plotly_chart(fig2,use_container_width=True)
 
 # =============================================
 # CONFIGURAÇÕES
 # =============================================
 def pg_config():
     requer_perfil("gerencia")
-    st.title("⚙️ Configurações")
-    aba=st.radio("",["Setores","Pontuação & IAF","Ciclos & Metas","Upload","Senhas","Logs"],horizontal=True)
-    st.markdown("---")
+    st.markdown('<h1 style="color:white;font-size:22px;font-weight:700;margin-bottom:16px">⚙️ Configurações</h1>',unsafe_allow_html=True)
+    aba=st.radio("",["Setores","Pontuação & IAF","Ciclos & Metas","Upload","Usuários","Logs"],horizontal=True)
+    st.markdown("<hr style='border-color:#1e1e1e;margin:8px 0 16px'>",unsafe_allow_html=True)
     sb=get_sb(); usuario=st.session_state.get('usuario','sistema')
     if aba=="Setores":
-        st.caption("Setores detectados automaticamente no upload. Defina tipo, status e participação na meta do grupo.")
+        requer_perfil("admin")
         sdb=sb.table("setores").select("*").order("nome").execute().data or []
         if not sdb: st.info("Faça o upload primeiro.")
         else:
             h1,h2,h3,h4,h5=st.columns([3,2,2,2,1])
-            h1.markdown('<span style="font-size:11px;color:#94a3b8;font-weight:700">SETOR</span>',unsafe_allow_html=True)
-            h2.markdown('<span style="font-size:11px;color:#94a3b8;font-weight:700">TIPO</span>',unsafe_allow_html=True)
-            h3.markdown('<span style="font-size:11px;color:#94a3b8;font-weight:700">STATUS</span>',unsafe_allow_html=True)
-            h4.markdown('<span style="font-size:11px;color:#94a3b8;font-weight:700">META GRUPO</span>',unsafe_allow_html=True)
-            st.markdown("<hr style='margin:4px 0;border-color:#e2e8f0'>",unsafe_allow_html=True)
+            for h,lbl in zip([h1,h2,h3,h4],['SETOR','TIPO','STATUS','META GRUPO']):
+                h.markdown(f'<span style="font-size:11px;color:#475569;font-weight:700">{lbl}</span>',unsafe_allow_html=True)
+            st.markdown("<hr style='border-color:#1e1e1e;margin:4px 0'>",unsafe_allow_html=True)
             for s in sdb:
                 c1,c2,c3,c4,c5=st.columns([3,2,2,2,1])
-                c1.markdown(f'<div style="padding-top:8px;font-size:13px;font-weight:500">{s["nome"]}</div>',unsafe_allow_html=True)
+                c1.markdown(f'<div style="padding-top:8px;font-size:13px;color:white">{s["nome"]}</div>',unsafe_allow_html=True)
                 with c2: ti=st.selectbox("",["financeiro","base"],index=0 if s['tipo']=='financeiro' else 1,key=f"t{s['id']}",label_visibility="collapsed")
                 with c3: at=st.selectbox("",["Ativo","Inativo"],index=0 if s['ativo'] else 1,key=f"a{s['id']}",label_visibility="collapsed")
                 with c4: mg=st.selectbox("",["Sim","Não"],index=0 if s.get('meta_grupo',True) else 1,key=f"mg{s['id']}",label_visibility="collapsed")
                 with c5:
                     if st.button("💾",key=f"s{s['id']}"): sb.table("setores").update({"tipo":ti,"ativo":at=="Ativo","meta_grupo":mg=="Sim"}).eq("id",s['id']).execute(); st.success("✓"); st.rerun()
     elif aba=="Pontuação & IAF":
-        st.caption("Ajuste pesos e faixas.")
+        requer_perfil("admin")
         t1,t2,t3=st.tabs(["Pontuação Base","Pontuação Financeiro","Faixas & IAF"])
         with t1:
             c1,c2=st.columns(2)
@@ -762,7 +819,7 @@ def pg_config():
                 pts_mu=st.number_input("Multimarcas (pts)",value=int(get_config('pts_multimarcas',90)),step=10)
                 pts_cab=st.number_input("Cabelos % (pts)",value=int(get_config('pts_pct_cabelos',90)),step=10)
                 pts_mak=st.number_input("Make % (pts)",value=int(get_config('pts_pct_make',70)),step=10)
-            st.info(f"Total IAF Financeiro: {pts_bot+pts_eud+pts_at2+pts_mu+pts_cab+pts_mak} pts (meta: 1.000)")
+            st.info(f"Total: {pts_bot+pts_eud+pts_at2+pts_mu+pts_cab+pts_mak} pts (meta: 1.000)")
         with t3:
             c1,c2=st.columns(2)
             with c1:
@@ -786,22 +843,27 @@ def pg_config():
                 if st.button("Criar"):
                     if nc: sb.table("ciclos").insert({"nome":nc,"data_inicio":str(di),"data_fim":str(dfc),"ativo":True}).execute(); st.success("Criado!"); st.rerun()
             for c in get_ciclos():
-                cc1,cc2,cc3=st.columns([3,2,2]); cc1.markdown(f"**{c['nome']}**"); cc2.markdown("✅ Ativo" if c['ativo'] else "⬜ Inativo")
+                cc1,cc2,cc3=st.columns([3,2,2]); cc1.markdown(f'<span style="color:white">{c["nome"]}</span>',unsafe_allow_html=True); cc2.markdown("✅ Ativo" if c['ativo'] else "⬜ Inativo")
                 if not c['ativo']:
                     with cc3:
                         if st.button("Ativar",key=f"at{c['id']}"): sb.table("ciclos").update({"ativo":False}).execute(); sb.table("ciclos").update({"ativo":True}).eq("id",c['id']).execute(); st.rerun()
         with tm:
             ca=get_ciclo_ativo()
             if not ca: st.warning("Crie um ciclo ativo."); st.stop()
-            st.caption(f"Ciclo ativo: **{ca['nome']}**")
-            st.markdown("**Metas Globais**")
-            mg1,mg2,mg3=st.columns(3)
+            st.markdown(f'<span style="color:#475569;font-size:12px">Ciclo ativo: </span><span style="color:white;font-weight:600">{ca["nome"]}</span>',unsafe_allow_html=True)
+            st.markdown("<div style='height:12px'></div>",unsafe_allow_html=True)
+            st.markdown('<span style="color:#94a3b8;font-size:12px;font-weight:600">Metas Globais</span>',unsafe_allow_html=True)
+            mg1,mg2,mg3,mg4,mg5=st.columns(5)
             ba_v=mg1.number_input("Base Atual",min_value=0,value=int(get_config(f"base_atual_{ca['id']}",0) or 0),key="ba")
-            bp_v=mg2.number_input("Base Meta PEF",min_value=0,value=int(get_config(f"base_meta_pef_{ca['id']}",0) or 0),key="bp")
-            mag_v=mg3.number_input("Meta Atividade Global (%)",min_value=0.0,max_value=100.0,value=float(get_config(f"meta_atividade_global_{ca['id']}",0) or 0),step=0.1,key="mag")
+            bp_v=mg2.number_input("Meta PEF",min_value=0,value=int(get_config(f"base_meta_pef_{ca['id']}",0) or 0),key="bp")
+            mag_v=mg3.number_input("Meta Atividade %",min_value=0.0,max_value=100.0,value=float(get_config(f"meta_atividade_global_{ca['id']}",0) or 0),step=0.1,key="mag")
+            mat_v=mg4.number_input("Meta Ativos",min_value=0,value=int(float(get_config(f"meta_ativos_{ca['id']}",0) or 0)),key="mat")
+            mrpa_v=mg5.number_input("Meta RPA (R$)",min_value=0.0,value=float(get_config(f"meta_rpa_{ca['id']}",0) or 0),step=10.0,key="mrpa")
             if st.button("💾 Salvar Metas Globais"):
-                set_config(f"base_atual_{ca['id']}",ba_v,usuario); set_config(f"base_meta_pef_{ca['id']}",bp_v,usuario); set_config(f"meta_atividade_global_{ca['id']}",mag_v,usuario); st.success("Salvo!")
-            st.markdown("---")
+                for k,v in [(f"base_atual_{ca['id']}",ba_v),(f"base_meta_pef_{ca['id']}",bp_v),(f"meta_atividade_global_{ca['id']}",mag_v),(f"meta_ativos_{ca['id']}",mat_v),(f"meta_rpa_{ca['id']}",mrpa_v)]:
+                    set_config(k,str(v),usuario)
+                st.success("Salvo!")
+            st.markdown("<hr style='border-color:#1e1e1e;margin:12px 0'>",unsafe_allow_html=True)
             setores=get_setores(); mex={m['setor_id']:m for m in get_metas(ca['id'])}
             tb,tf=st.tabs(["Base","Financeiro"])
             with tb:
@@ -830,28 +892,32 @@ def pg_config():
                             mmu=st.number_input("Multimarcas%",0.0,100.0,float(ma.get('meta_multimarcas',0)),key=f"mmu{s['id']}")
                             mpc=st.number_input("Cabelos%",0.0,100.0,float(ma.get('meta_pct_cabelos',0)),key=f"mpc{s['id']}")
                             mpm=st.number_input("Make%",0.0,100.0,float(ma.get('meta_pct_make',0)),key=f"mpm{s['id']}")
-                            mat=st.number_input("Atividade%",0.0,100.0,float(ma.get('meta_atividade',0)),key=f"mat{s['id']}")
+                            mat=st.number_input("Atividade%",0.0,100.0,float(ma.get('meta_atividade',0)),key=f"mat_s{s['id']}")
                         with f3:
                             st.caption("Base")
                             mtb=st.number_input("Tamanho Base",0,value=int(ma.get('tamanho_base',0)),key=f"mtb{s['id']}")
                         if st.button("💾 Salvar",key=f"sf{s['id']}"): upsert_meta(ca['id'],s['id'],{'meta_boticario':mbo,'meta_eudora':meu,'meta_oui':mou,'meta_qdb':mqd,'meta_cabelos':mca,'meta_make':mma,'meta_multimarcas':mmu,'meta_pct_cabelos':mpc,'meta_pct_make':mpm,'meta_atividade':mat,'tamanho_base':mtb,'updated_by':usuario}); st.success("Salvo!")
     elif aba=="Upload":
         requer_perfil("admin")
-        st.caption("Carregue as planilhas do ERP para o ciclo ativo.")
         ca=get_ciclo_ativo()
         if not ca: st.warning("Sem ciclo ativo."); return
-        st.info(f"Ciclo: **{ca['nome']}**")
-        uploaded={}; c1u,c2u=st.columns(2)
-        for i,nm in enumerate(ARQS):
+        st.markdown(f'<span style="color:#94a3b8;font-size:13px">Ciclo: <b style="color:white">{ca["nome"]}</b></span>',unsafe_allow_html=True)
+        st.markdown("<div style='height:12px'></div>",unsafe_allow_html=True)
+        uploaded={}
+        arqs_labels={'Boticario':'Boticário','Cabelos':'Cabelos','Eudora':'Eudora','Make':'Make','Oui':'OUI','QDB':'QDB','Ativos':'Ativos','ER':'ER','Vendedor':'Vendedor (itens por vendedor)'}
+        c1u,c2u=st.columns(2)
+        for i,(nm,lbl) in enumerate(arqs_labels.items()):
             with (c1u if i%2==0 else c2u):
-                f=st.file_uploader(f"📁 {nm}.xlsx",type=['xlsx'],key=f"up{nm}")
+                st.markdown(f'<div style="font-size:13px;color:#94a3b8;font-weight:500;margin-bottom:4px">📁 {lbl}</div>',unsafe_allow_html=True)
+                f=st.file_uploader(f"Selecionar {lbl}",type=['xlsx'],key=f"up{nm}",label_visibility="collapsed")
                 if f: uploaded[nm]=f
         if uploaded and st.button("🚀 Processar",use_container_width=True,type="primary"):
             with st.spinner("Processando..."):
                 try:
                     dfs={}
                     for nm,arq in uploaded.items():
-                        dfs[nm]=pd.read_excel(arq) if nm in ['ER','Ativos'] else ler_planilha(arq,nm)
+                        if nm in ['ER','Ativos','Vendedor']: dfs[nm]=pd.read_excel(arq)
+                        else: dfs[nm]=ler_planilha(arq,nm)
                     se=set()
                     for nm in ['Boticario','Cabelos','Eudora','Make','Oui','QDB','Ativos']:
                         if nm in dfs and 'Setor' in dfs[nm].columns:
@@ -864,22 +930,18 @@ def pg_config():
                     sb.table("resultados_er").delete().eq("ciclo_id",ca['id']).execute()
                     for r in rp['resultados_er']: r['ciclo_id']=ca['id']; sb.table("resultados_er").insert(r).execute()
                     ag=rp.get('ativos_unicos_global',0)
-                    def _uc(k,v): _uc_sb(sb,k,v,usuario)
-                    _uc(f"ativos_unicos_{ca['id']}",ag)
-                    _uc(f"receita_ativos_{ca['id']}",rp.get('receita_ativos',0))
-                    # Make global
+                    _uc(f"ativos_unicos_{ca['id']}",ag,usuario)
+                    _uc(f"receita_ativos_{ca['id']}",rp.get('receita_ativos',0),usuario)
                     if 'Make' in dfs:
-                        mk_all=[int(x) for x in dfs['Make'][dfs['Make']['ValorPraticado']>0]['CodigoRevendedora'].dropna().unique()]
-                        _uc(f"make_global_{ca['id']}",_json.dumps(mk_all))
-                    # Cabelos global
+                        mk=[int(x) for x in dfs['Make'][dfs['Make']['ValorPraticado']>0]['CodigoRevendedora'].dropna().unique()]
+                        _uc(f"make_global_{ca['id']}",_json.dumps(mk),usuario)
                     if 'Cabelos' in dfs:
-                        cb_all=[int(x) for x in dfs['Cabelos'][dfs['Cabelos']['ValorPraticado']>0]['CodigoRevendedora'].dropna().unique()]
-                        _uc(f"cab_global_{ca['id']}",_json.dumps(cb_all))
-                    # Multimarcas global — NOVO
+                        cb=[int(x) for x in dfs['Cabelos'][dfs['Cabelos']['ValorPraticado']>0]['CodigoRevendedora'].dropna().unique()]
+                        _uc(f"cab_global_{ca['id']}",_json.dumps(cb),usuario)
                     if 'Ativos' in dfs:
-                        df_multi_g=calc_multimarcas(dfs['Ativos'],dfs)
-                        multi_all=[int(x) for x in df_multi_g[df_multi_g['is_multimarca']]['CodigoRevendedora'].dropna().unique()]
-                        _uc(f"multi_global_{ca['id']}",_json.dumps(multi_all))
+                        dfm=calc_multimarcas(dfs['Ativos'],dfs)
+                        ml=[int(x) for x in dfm[dfm['is_multimarca']]['CodigoRevendedora'].dropna().unique()]
+                        _uc(f"multi_global_{ca['id']}",_json.dumps(ml),usuario)
                     # ER
                     if 'ER' in dfs:
                         df_er_f=dfs['ER'][(dfs['ER']['MeioCaptacao']=='VD+')&(dfs['ER']['SituaçãoComercial']=='Entregue')].copy()
@@ -898,58 +960,131 @@ def pg_config():
                                 cbs=set(int(x) for x in dfs['Cabelos']['CodigoRevendedora'].dropna().unique())
                                 cb_l=[int(x) for x in (er_s&cbs)]; rev_cb_t=len(cb_l)
                             for k2,v2 in [(f"er_rev_total_{ca['id']}",rev_er_t),(f"er_rev_multi_{ca['id']}",rev_mu_t),(f"er_rev_make_{ca['id']}",rev_mk_t),(f"er_rev_cab_{ca['id']}",rev_cb_t),(f"er_cab_list_{ca['id']}",_json.dumps(cb_l)),(f"er_make_list_{ca['id']}",_json.dumps(mk_l))]:
-                                _uc(k2,v2)
+                                _uc(k2,v2,usuario)
                             # Dados agregados ER
-                            total_rev_er=df_er_f['Pessoa'].nunique()
+                            total_rv=df_er_f['Pessoa'].nunique()
                             df_b=df_er_f.copy(); df_b['Bairro']=df_b['Bairro'].str.upper().str.strip()
                             br=df_b.groupby('Bairro')['Pessoa'].nunique().reset_index()
-                            br['pct']=round(br['Pessoa']/total_rev_er*100,1)
-                            _uc(f"er_bairro_{ca['id']}",_json.dumps(br.rename(columns={'Pessoa':'rvs'}).sort_values('rvs',ascending=False).to_dict('records')))
-                            sr=df_er_f.groupby('Papel')['Pessoa'].nunique().reset_index()
-                            sr['pct']=round(sr['Pessoa']/total_rev_er*100,1)
+                            br['pct']=round(br['Pessoa']/total_rv*100,1)
+                            _uc(f"er_bairro_{ca['id']}",_json.dumps(br.rename(columns={'Pessoa':'rvs'}).sort_values('rvs',ascending=False).to_dict('records')),usuario)
+                            sr=df_er_f.groupby('Papel')['Pessoa'].nunique().reset_index(); sr['pct']=round(sr['Pessoa']/total_rv*100,1)
                             tk=df_er_f.groupby('Papel').agg(rec=('ValorPraticado','sum'),rvs=('Pessoa','nunique')).reset_index()
-                            tk['ticket']=round(tk['rec']/tk['rvs'],2)
-                            tk_map={r['Papel']:float(r['ticket']) for _,r in tk.iterrows()}
+                            tk['ticket']=round(tk['rec']/tk['rvs'],2); tk_map={r['Papel']:float(r['ticket']) for _,r in tk.iterrows()}
                             sr['ticket']=sr['Papel'].map(tk_map)
-                            _uc(f"er_seg_{ca['id']}",_json.dumps(sr.rename(columns={'Papel':'seg','Pessoa':'rvs'}).sort_values('rvs',ascending=False).to_dict('records')))
+                            _uc(f"er_seg_{ca['id']}",_json.dumps(sr.rename(columns={'Papel':'seg','Pessoa':'rvs'}).sort_values('rvs',ascending=False).to_dict('records')),usuario)
                             dias_pt={0:'Segunda',1:'Terça',2:'Quarta',3:'Quinta',4:'Sexta',5:'Sábado',6:'Domingo'}
                             df_er_f['DataCap']=pd.to_datetime(df_er_f['Data Captação'],dayfirst=True,errors='coerce')
                             freq=df_er_f.groupby('DataCap')['Pessoa'].nunique().reset_index()
                             freq=freq.dropna(subset=['DataCap']).sort_values('DataCap')
                             freq['label']=freq['DataCap'].dt.strftime('%d/%m')+'('+freq['DataCap'].dt.dayofweek.map(dias_pt)+')'
-                            _uc(f"er_freq_{ca['id']}",_json.dumps([{'label':r['label'],'rvs':int(r['Pessoa'])} for _,r in freq.iterrows()]))
+                            _uc(f"er_freq_{ca['id']}",_json.dumps([{'label':r['label'],'rvs':int(r['Pessoa'])} for _,r in freq.iterrows()]),usuario)
                             if 'Cabelos' in dfs:
                                 cab_set=set(int(x) for x in dfs['Cabelos'][dfs['Cabelos']['ValorPraticado']>0]['CodigoRevendedora'].dropna().unique())
                                 df_er_f['is_cab']=df_er_f['Pessoa'].isin(cab_set)
                                 cr=df_er_f.groupby('Usuario de Finalização').agg(total=('Pessoa','count'),n_cab=('is_cab','sum')).reset_index()
                                 cr['pct_cab']=round(cr['n_cab']/cr['total']*100,1)
-                                _uc(f"er_rank_cab_{ca['id']}",_json.dumps(cr.rename(columns={'Usuario de Finalização':'usuario'}).to_dict('records')))
+                                _uc(f"er_rank_cab_{ca['id']}",_json.dumps(cr.rename(columns={'Usuario de Finalização':'usuario'}).to_dict('records')),usuario)
                             if 'Make' in dfs:
                                 make_set=set(int(x) for x in dfs['Make'][dfs['Make']['ValorPraticado']>0]['CodigoRevendedora'].dropna().unique())
                                 df_er_f['is_mak']=df_er_f['Pessoa'].isin(make_set)
                                 mr=df_er_f.groupby('Usuario de Finalização').agg(total=('Pessoa','count'),n_mak=('is_mak','sum')).reset_index()
                                 mr['pct_mak']=round(mr['n_mak']/mr['total']*100,1)
-                                _uc(f"er_rank_mak_{ca['id']}",_json.dumps(mr.rename(columns={'Usuario de Finalização':'usuario'}).to_dict('records')))
-                        except Exception as e_er: st.warning(f"⚠️ Dados ER não salvos completamente: {e_er}")
+                                _uc(f"er_rank_mak_{ca['id']}",_json.dumps(mr.rename(columns={'Usuario de Finalização':'usuario'}).to_dict('records')),usuario)
+                        except Exception as e_er: st.warning(f"⚠️ Dados ER: {e_er}")
+                    # Vendedor
+                    if 'Vendedor' in dfs and 'ER' in dfs:
+                        try:
+                            df_v=dfs['Vendedor'].copy()
+                            df_er_v=dfs['ER'][(dfs['ER']['MeioCaptacao']=='VD+')&(dfs['ER']['SituaçãoComercial']=='Entregue')].copy()
+                            # Normalizar pedido para cruzamento
+                            df_v['ped_norm']=df_v['Código Pedido'].astype(str).str.replace('.','',regex=False).str.strip()
+                            df_er_v['ped_norm']=df_er_v['CodigoPedido'].astype(str).str.strip()
+                            # Cruzar pedido → vendedor → revendedor
+                            vend_map=df_v[['ped_norm','Vendedor','Código Revendedor']].drop_duplicates()
+                            df_er_v=df_er_v.merge(vend_map,on='ped_norm',how='left')
+                            # CPF sets para conversão
+                            multi_set=set(int(x) for x in dfm[dfm['is_multimarca']]['CodigoRevendedora'].dropna().unique()) if 'Ativos' in dfs else set()
+                            mak_set=set(int(x) for x in dfs['Make']['CodigoRevendedora'].dropna().unique()) if 'Make' in dfs else set()
+                            cab_set=set(int(x) for x in dfs['Cabelos']['CodigoRevendedora'].dropna().unique()) if 'Cabelos' in dfs else set()
+                            df_er_v['is_multi']=df_er_v['Pessoa'].isin(multi_set)
+                            df_er_v['is_mak']=df_er_v['Pessoa'].isin(mak_set)
+                            df_er_v['is_cab']=df_er_v['Pessoa'].isin(cab_set)
+                            # Por vendedor: atendidos únicos e % conversão
+                            vend_conv=[]
+                            for vend,grp in df_er_v.groupby('Vendedor'):
+                                if pd.isna(vend): continue
+                                revs=set(grp['Pessoa'].dropna().unique())
+                                at=len(revs)
+                                pmu=len(revs&multi_set)/at*100 if at>0 else 0
+                                pcb=len(revs&cab_set)/at*100 if at>0 else 0
+                                pmk=len(revs&mak_set)/at*100 if at>0 else 0
+                                tk_v=grp['ValorPraticado'].sum()/at if at>0 else 0
+                                vend_conv.append({'vendedor':vend,'atendidos':at,'pct_multi':round(pmu,1),'pct_cab':round(pcb,1),'pct_make':round(pmk,1),'ticket':round(float(tk_v),2)})
+                            _uc(f"er_vend_conv_{ca['id']}",_json.dumps(vend_conv),usuario)
+                            # Não convertidos por tipo
+                            nao_conv=[]
+                            # Multimarcas
+                            for pessoa in df_er_v['Pessoa'].dropna().unique():
+                                cpf=int(pessoa)
+                                if cpf not in multi_set:
+                                    vends=list(df_er_v[df_er_v['Pessoa']==pessoa]['Vendedor'].dropna().unique())
+                                    rv_nome=df_er_v[df_er_v['Pessoa']==pessoa]['Revendedor'].dropna().values
+                                    rv=rv_nome[0] if len(rv_nome)>0 else str(cpf)
+                                    if vends: nao_conv.append({'tipo':'multi','revendedor':rv,'vendedores':vends})
+                            # Cabelos
+                            for pessoa in df_er_v['Pessoa'].dropna().unique():
+                                cpf=int(pessoa)
+                                if cpf not in cab_set:
+                                    vends=list(df_er_v[df_er_v['Pessoa']==pessoa]['Vendedor'].dropna().unique())
+                                    rv_nome=df_er_v[df_er_v['Pessoa']==pessoa]['Revendedor'].dropna().values
+                                    rv=rv_nome[0] if len(rv_nome)>0 else str(cpf)
+                                    if vends: nao_conv.append({'tipo':'cab','revendedor':rv,'vendedores':vends})
+                            # Make
+                            for pessoa in df_er_v['Pessoa'].dropna().unique():
+                                cpf=int(pessoa)
+                                if cpf not in mak_set:
+                                    vends=list(df_er_v[df_er_v['Pessoa']==pessoa]['Vendedor'].dropna().unique())
+                                    rv_nome=df_er_v[df_er_v['Pessoa']==pessoa]['Revendedor'].dropna().values
+                                    rv=rv_nome[0] if len(rv_nome)>0 else str(cpf)
+                                    if vends: nao_conv.append({'tipo':'make','revendedor':rv,'vendedores':vends})
+                            _uc(f"er_nao_conv_{ca['id']}",_json.dumps(nao_conv),usuario)
+                        except Exception as e_v: st.warning(f"⚠️ Dados Vendedor: {e_v}")
                     for nm in uploaded: log_upload(ca['id'],nm,usuario)
                     st.success(f"✅ {len(uploaded)} arquivo(s) processados! Ativos: {ag}")
                 except Exception as e: st.error(f"❌ Erro: {e}")
-    elif aba=="Senhas":
+    elif aba=="Usuários":
         requer_perfil("admin")
-        st.warning("⚠️ Alterar senhas afeta todos os usuários.")
-        s1,s2,s3=st.columns(3)
-        with s1:
-            st.caption("Consultor"); nl=st.text_input("Nova",type="password",key="nl")
-            if st.button("Alterar",key="al"):
-                if nl: set_config('senha_consultor',nl,usuario); st.success("✓")
-        with s2:
-            st.caption("Gerência"); ng=st.text_input("Nova",type="password",key="ng")
-            if st.button("Alterar",key="ag"):
-                if ng: set_config('senha_gerencia',ng,usuario); st.success("✓")
-        with s3:
-            st.caption("Admin"); na=st.text_input("Nova",type="password",key="na")
-            if st.button("Alterar",key="aa"):
-                if na: set_config('senha_admin',na,usuario); st.success("✓")
+        st.markdown('<span style="color:#94a3b8;font-size:12px">Gerencie os usuários do sistema.</span>',unsafe_allow_html=True)
+        st.markdown("<div style='height:12px'></div>",unsafe_allow_html=True)
+        with st.expander("➕ Novo usuário"):
+            nu1,nu2,nu3=st.columns(3)
+            novo_nome=nu1.text_input("Nome de usuário",key="nu_nome")
+            novo_senha=nu2.text_input("Senha",type="password",key="nu_senha")
+            novo_perfil=nu3.selectbox("Perfil",["consultor","gerencia","admin"],key="nu_perfil")
+            if st.button("Criar usuário"):
+                if novo_nome and novo_senha:
+                    ex=sb.table("usuarios").select("id").eq("nome",novo_nome).execute()
+                    if ex.data: st.error("Usuário já existe.")
+                    else:
+                        sb.table("usuarios").insert({"nome":novo_nome,"senha_hash":hash_senha(novo_senha),"perfil":novo_perfil,"ativo":True}).execute()
+                        st.success(f"✅ Usuário {novo_nome} criado!"); st.rerun()
+                else: st.error("Preencha nome e senha.")
+        usuarios=get_usuarios()
+        if usuarios:
+            for u in usuarios:
+                cu1,cu2,cu3,cu4,cu5=st.columns([3,2,2,2,1])
+                cu1.markdown(f'<span style="color:white;font-size:13px">{u["nome"]}</span>',unsafe_allow_html=True)
+                cu2.markdown(f'<span style="font-size:12px;color:#64748b">{u["perfil"]}</span>',unsafe_allow_html=True)
+                cu3.markdown(f'<span style="font-size:12px;color:{"#4ade80" if u["ativo"] else "#f87171"}">{"✅ Ativo" if u["ativo"] else "❌ Inativo"}</span>',unsafe_allow_html=True)
+                with cu4:
+                    np=st.selectbox("",["consultor","gerencia","admin"],index=["consultor","gerencia","admin"].index(u['perfil']),key=f"up_{u['id']}",label_visibility="collapsed")
+                with cu5:
+                    if st.button("💾",key=f"us_{u['id']}"): sb.table("usuarios").update({"perfil":np,"ativo":True}).eq("id",u['id']).execute(); st.rerun()
+                # Reset senha
+                with st.expander(f"🔑 Resetar senha — {u['nome']}",expanded=False):
+                    ns=st.text_input("Nova senha",type="password",key=f"ns_{u['id']}")
+                    if st.button("Alterar senha",key=f"as_{u['id']}"):
+                        if ns: sb.table("usuarios").update({"senha_hash":hash_senha(ns)}).eq("id",u['id']).execute(); st.success("Senha alterada!")
     elif aba=="Logs":
         tl1,tl2,tl3=st.tabs(["Uploads","Alterações","Acessos"])
         with tl1:
@@ -965,14 +1100,12 @@ def pg_config():
             if r.data:
                 dla=pd.DataFrame(r.data); dla['created_at']=pd.to_datetime(dla['created_at']).dt.strftime('%d/%m/%Y %H:%M')
                 st.dataframe(dla[['tabela','campo','valor_anterior','valor_novo','usuario','created_at']],use_container_width=True)
-            else: st.info("Sem alterações.")
         with tl3:
             try:
                 ra=sb.table("log_acessos").select("*").order("created_at",desc=True).limit(100).execute()
                 if ra.data:
                     dla2=pd.DataFrame(ra.data); dla2['created_at']=pd.to_datetime(dla2['created_at']).dt.strftime('%d/%m/%Y %H:%M')
                     st.dataframe(dla2[['usuario','perfil','acao','created_at']],use_container_width=True)
-                else: st.info("Sem acessos registrados.")
             except: st.info("Tabela log_acessos não encontrada.")
 
 # =============================================
@@ -985,13 +1118,17 @@ else:
     ciclos=get_ciclos(); ciclo_ativo=get_ciclo_ativo()
     with st.sidebar:
         iniciais="".join([p[0].upper() for p in st.session_state.usuario.split()[:2]])
-        st.markdown(f'<div style="padding:16px 8px 12px"><div style="font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:12px">💼 Venda Direta</div><div style="display:flex;align-items:center;gap:10px;padding:10px;background:#334155;border-radius:8px"><div style="width:32px;height:32px;border-radius:50%;background:#f59e0b;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#1e293b;flex-shrink:0">{iniciais}</div><div><div style="font-size:12px;font-weight:600;color:#f1f5f9">{st.session_state.usuario}</div><div style="font-size:10px;color:#64748b">{st.session_state.perfil}</div></div></div></div>',unsafe_allow_html=True)
+        st.markdown(f'<div style="padding:16px 8px 12px"><div style="font-size:15px;font-weight:700;color:white;margin-bottom:12px">💼 Venda Direta</div>'
+                    f'<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#111;border-radius:8px;border:1px solid #1e1e1e">'
+                    f'<div style="width:32px;height:32px;border-radius:50%;background:#f59e0b;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#000;flex-shrink:0">{iniciais}</div>'
+                    f'<div><div style="font-size:12px;font-weight:600;color:white">{st.session_state.usuario}</div>'
+                    f'<div style="font-size:10px;color:#475569">{st.session_state.perfil}</div></div></div></div>',unsafe_allow_html=True)
         if ciclos:
             nc=[c['nome'] for c in ciclos]; ia=next((i for i,c in enumerate(ciclos) if c['ativo']),0)
             sn=st.selectbox("Ciclo",nc,index=ia); cs=next((c for c in ciclos if c['nome']==sn),ciclo_ativo)
             st.session_state.ciclo_sel_id=cs['id'] if cs else None
-        st.markdown("<hr style='border-color:#334155;margin:8px 0'>",unsafe_allow_html=True)
-        MENU=[("🏠 Home","pg_home"),("👥 Base","pg_base"),("💼 Financeiro","pg_financeiro"),("🏪 ER","pg_er"),("⚙️ Configurações","pg_config")]
+        st.markdown("<hr style='border-color:#1e1e1e;margin:8px 0'>",unsafe_allow_html=True)
+        MENU=[("🏠 Home","pg_home"),("👥 Base","pg_base"),("💼 Financeiro","pg_financeiro"),("🎯 IAF","pg_iaf"),("🏪 ER","pg_er"),("⚙️ Configurações","pg_config")]
         if 'pg_atual' not in st.session_state: st.session_state.pg_atual="🏠 Home"
         for label,_ in MENU:
             ativo=st.session_state.pg_atual==label
@@ -1000,18 +1137,26 @@ else:
             else:
                 if st.button(label,key=f"nav_{label}",use_container_width=True):
                     st.session_state.pg_atual=label; st.rerun()
-        st.markdown("<hr style='border-color:#334155;margin:8px 0'>",unsafe_allow_html=True)
-        if st.button("🔄 Atualizar dados",use_container_width=True):
-            st.cache_resource.clear()
-            st.rerun()
+        st.markdown("<hr style='border-color:#1e1e1e;margin:8px 0'>",unsafe_allow_html=True)
+        if st.button("🔄 Atualizar",use_container_width=True):
+            st.cache_resource.clear(); st.rerun()
         if st.button("Sair",use_container_width=True):
             try: get_sb().table("log_acessos").insert({"usuario":st.session_state.usuario,"perfil":st.session_state.perfil,"acao":"logout"}).execute()
             except: pass
             st.session_state.perfil=None; st.session_state.usuario=None; st.rerun()
+        # Data de atualização
+        st.markdown("<div style='flex:1'></div>",unsafe_allow_html=True)
+        ca_sb=get_ciclo_ativo()
+        if ca_sb:
+            logs_sb=get_logs(ca_sb['id'])
+            if logs_sb:
+                ult=pd.to_datetime(logs_sb[0]['data_upload']).strftime('%d/%m/%Y %H:%M')
+                st.markdown(f'<div style="padding:8px;margin-top:8px"><div style="font-size:10px;color:#334155">🕐 Última atualização</div><div style="font-size:11px;color:#475569;margin-top:2px">{ult}</div></div>',unsafe_allow_html=True)
     cid=st.session_state.get('ciclo_sel_id')
     pg=st.session_state.get('pg_atual',"🏠 Home")
     if pg=="🏠 Home": pg_home(cid)
     elif pg=="👥 Base": pg_base(cid)
     elif pg=="💼 Financeiro": pg_financeiro(cid)
+    elif pg=="🎯 IAF": pg_iaf(cid)
     elif pg=="🏪 ER": pg_er(cid)
     elif pg=="⚙️ Configurações": pg_config()
