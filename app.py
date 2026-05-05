@@ -1047,6 +1047,13 @@ def pg_config():
                                 tk_v=grp['ValorPraticado'].sum()/at if at>0 else 0
                                 vend_conv.append({'vendedor':vend,'atendidos':at,'pct_multi':round(pmu,1),'pct_cab':round(pcb,1),'pct_make':round(pmk,1),'ticket':round(float(tk_v),2)})
                             _uc(f"er_vend_conv_{ca['id']}",_json.dumps(vend_conv),usuario)
+                            # Mapa CPF -> nome revendedor
+                            rv_nome_map={}
+                            try:
+                                for _,rw in df_v[["Código Revendedor","Revendedor"]].drop_duplicates().iterrows():
+                                    try: rv_nome_map[int(str(rw["Código Revendedor"]).replace(".","").strip())]=str(rw["Revendedor"])
+                                    except: pass
+                            except: pass
                             # Não convertidos — apenas revendedores com vendedor identificado
                             nao_conv=[]
                             df_com_vend=df_er_v[df_er_v['Vendedor'].notna()]
