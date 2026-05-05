@@ -1039,7 +1039,7 @@ def pg_config():
                             vend_conv=[]
                             for vend,grp in df_er_v.groupby('Vendedor'):
                                 if pd.isna(vend): continue
-                                revs=set(grp['Pessoa'].dropna().unique())
+                                revs=set(int(x) for x in grp['Pessoa'].dropna().unique())
                                 at=len(revs)
                                 pmu=len(revs&multi_set)/at*100 if at>0 else 0
                                 pcb=len(revs&cab_set)/at*100 if at>0 else 0
