@@ -9,8 +9,8 @@ import hashlib
 st.set_page_config(page_title="Dashboard Venda Direta", page_icon="💼", layout="wide")
 
 st.markdown("""<style>
-    .stApp { background: #000000; }
-    .block-container { padding-top: 1.2rem; padding-left: 1.5rem; padding-right: 1.5rem; padding-bottom: 2rem; }
+    .stApp { background: #ffffff; }
+    .block-container { padding-top: 2rem; padding-left: 1.5rem; padding-right: 1.5rem; padding-bottom: 2rem; }
     [data-testid="stSidebar"] { background-color: #0a0a0a !important; min-width: 220px; border-right: 1px solid #1a1a1a; }
     [data-testid="stSidebar"] > div { background-color: #0a0a0a !important; }
     [data-testid="stSidebar"] label, [data-testid="stSidebar"] p,
@@ -22,25 +22,25 @@ st.markdown("""<style>
         font-size: 13px !important; width: 100% !important; }
     [data-testid="stSidebar"] .stButton > button:hover { background: #111 !important; color: #cbd5e1 !important; }
     [data-testid="stSidebar"] .stSelectbox div { background: #111 !important; border: 1px solid #222 !important; color: #94a3b8 !important; }
-    h1,h2,h3,h4 { color: white !important; font-weight: 700 !important; }
-    .stTabs [data-baseweb="tab-list"] { gap: 4px; background: #111; border-radius: 8px; padding: 4px; border: 1px solid #1e1e1e; }
+    h1,h2,h3,h4 { color: #0f172a !important; font-weight: 700 !important; }
+    .stTabs [data-baseweb="tab-list"] { gap: 4px; background: #f8fafc; border-radius: 8px; padding: 4px; border: 1px solid #e2e8f0; }
     .stTabs [data-baseweb="tab"] { font-size: 12px; border-radius: 6px; padding: 6px 16px; color: #64748b !important; }
     .stTabs [aria-selected="true"] { background: #2563eb !important; color: white !important; }
     .stTabs [data-baseweb="tab-panel"] { padding-top: 16px; background: transparent; }
-    .stExpander { border: 1px solid #1e1e1e !important; border-radius: 8px !important; background: #0a0a0a !important; }
-    .stExpander summary { color: #94a3b8 !important; }
+    .stExpander { border: 1px solid #e2e8f0 !important; border-radius: 8px !important; background: #ffffff !important; }
+    .stExpander summary { color: #475569 !important; }
     .stDataFrame { border-radius: 8px; }
-    p { font-size: 13px; color: #94a3b8; }
-    .stMarkdown hr { border-color: #1e1e1e; margin: 0.5rem 0; }
+    p { font-size: 13px; color: #475569; }
+    .stMarkdown hr { border-color: #e2e8f0; margin: 0.5rem 0; }
     .stAlert { border-radius: 8px !important; }
-    .stTextInput input { background: #111 !important; border: 1px solid #222 !important; color: white !important; }
-    .stNumberInput input { background: #111 !important; border: 1px solid #222 !important; color: white !important; }
-    .stSelectbox div[data-baseweb="select"] { background: #111 !important; }
-    label { color: #64748b !important; font-size: 12px !important; }
-    .stFileUploader { background: #111 !important; border: 1px solid #222 !important; border-radius: 8px !important; padding: 8px !important; }
-    .stFileUploader label { color: #94a3b8 !important; font-size: 13px !important; font-weight: 500 !important; }
-    .stFileUploader section { background: #0a0a0a !important; border: 1px dashed #333 !important; }
-    .stFileUploader section span { color: #64748b !important; }
+    .stTextInput input { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; color: #0f172a !important; }
+    .stNumberInput input { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; color: #0f172a !important; }
+    .stSelectbox div[data-baseweb="select"] { background: #f8fafc !important; }
+    label { color: #475569 !important; font-size: 12px !important; }
+    .stFileUploader { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; border-radius: 8px !important; padding: 8px !important; }
+    .stFileUploader label { color: #475569 !important; font-size: 13px !important; font-weight: 500 !important; }
+    .stFileUploader section { background: #ffffff !important; border: 1px dashed #cbd5e1 !important; }
+    .stFileUploader section span { color: #94a3b8 !important; }
 </style>""", unsafe_allow_html=True)
 
 SUPABASE_URL = st.secrets.get("SUPABASE_URL","https://bddjuowbotsybamawsts.supabase.co")
@@ -128,10 +128,10 @@ def class_iaf(iaf,cfg={}):
     return 'Não Classificado'
 
 def _cor_ating(pct):
-    if pct==0: return "#0f0f0f","#475569"
-    if pct>=100: return "#052e16","#4ade80"
-    if pct>=95: return "#1c1917","#fbbf24"
-    return "#1c0a0a","#f87171"
+    if pct==0: return "#f8fafc","#64748b"
+    if pct>=100: return "#f0fdf4","#166534"
+    if pct>=95: return "#fefce8","#854d0e"
+    return "#fef2f2","#991b1b"
 
 def calc_pts(r,m,p,f50,f75,f100):
     if m<=0: return 0.0
@@ -229,16 +229,17 @@ def processar_ciclo(dfs,metas_list,setores_list,cfg):
 # COMPONENTES VISUAIS
 # =============================================
 def card_home(label, valor, meta_str=None, pct=0, delta=None, info=False):
-    bg,tc = ("#0f0f0f","#475569") if info else _cor_ating(pct)
+    bg,tc = ("#f8fafc","#64748b") if info else _cor_ating(pct)
+    border = "#e2e8f0" if info else f"{tc}44"
     delta_html=""
     if delta is not None:
-        dc="#4ade80" if delta>=0 else "#f87171"
-        delta_html=f'<div style="font-size:11px;color:{dc};margin-top:4px">{"▲" if delta>=0 else "▼"} {abs(delta):.1f}%</div>'
-    meta_html=f'<div style="font-size:11px;color:{tc}88;margin-top:4px">{meta_str}</div>' if meta_str else ""
-    pct_html=f'<div style="font-size:12px;color:{tc};font-weight:600;margin-top:2px">{pct:.0f}%</div>' if not info and pct>0 else ""
-    return (f'<div style="border:1px solid white;border-radius:12px;padding:18px;background:{bg};height:100%">'
-            f'<div style="font-size:10px;color:{tc}88;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">{label}</div>'
-            f'<div style="font-size:24px;font-weight:700;color:{tc};line-height:1">{valor}</div>'
+        dc="#16a34a" if delta>=0 else "#dc2626"
+        delta_html=f'<div style="font-size:11px;color:{dc};margin-top:2px">{"▲" if delta>=0 else "▼"} {abs(delta):.1f}%</div>'
+    meta_html=f'<div style="font-size:11px;color:{tc};opacity:0.75;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{meta_str}</div>' if meta_str else ""
+    pct_html=f'<div style="font-size:11px;color:{tc};font-weight:600;margin-top:1px">{pct:.0f}% atingido</div>' if not info and pct>0 else ""
+    return (f'<div style="border:1px solid {border};border-radius:12px;padding:14px 16px;background:{bg};height:100px;box-sizing:border-box;overflow:hidden">'
+            f'<div style="font-size:10px;color:{tc};opacity:0.7;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{label}</div>'
+            f'<div style="font-size:20px;font-weight:700;color:{tc};line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{valor}</div>'
             f'{meta_html}{pct_html}{delta_html}</div>')
 
 def badge_iaf(cl):
@@ -295,7 +296,7 @@ def pg_home(cid):
     ciclo=get_ciclo_ativo(); ciclos=get_ciclos()
     cs=next((c for c in ciclos if c['id']==cid),ciclo) if cid else ciclo
     if not cs: st.warning("⚠️ Sem ciclo ativo."); return
-    st.markdown(f'<h1 style="color:white;font-size:22px;font-weight:700;margin-bottom:16px">🏠 Visão Geral — {cs["nome"]}</h1>',unsafe_allow_html=True)
+    st.markdown(f'<h1 style="color:#0f172a;font-size:22px;font-weight:700;margin-bottom:16px">📊 Indicadores Geral — {cs["nome"]}</h1>',unsafe_allow_html=True)
     res=get_resultados(cs['id'])
     if not res: st.info("📊 Aguardando processamento."); _status_arqs(cs); return
     df=pd.DataFrame(res)
@@ -391,30 +392,30 @@ def pg_base(cid):
     gap=base_atual-base_pef
     # KPIs
     bg_g,tc_g=_cor_ating(pct_g)
-    bg_gb="#052e16" if gb else "#1c0a0a"; tc_gb="#4ade80" if gb else "#f87171"
-    bg_gap="#052e16" if gap>=0 else "#1c0a0a"; tc_gap="#4ade80" if gap>=0 else "#f87171"
+    bg_gb="#f0fdf4" if gb else "#fef2f2"; tc_gb="#166534" if gb else "#991b1b"
+    bg_gap="#f0fdf4" if gap>=0 else "#fef2f2"; tc_gap="#166534" if gap>=0 else "#991b1b"
     st.markdown(f'''<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
-    <div style="border:1px solid white;border-radius:12px;padding:16px;background:{bg_g}">
-        <div style="font-size:10px;color:{tc_g}88;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Meta do Grupo</div>
+    <div style="border:1px solid {tc_g}44;border-radius:12px;padding:16px;background:{bg_g};height:90px;box-sizing:border-box;overflow:hidden">
+        <div style="font-size:10px;color:{tc_g};opacity:0.7;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Meta do Grupo</div>
         <div style="font-size:22px;font-weight:700;color:{tc_g}">{t_real} / {t_meta}</div>
-        <div style="font-size:11px;color:{tc_g}88;margin-top:4px">{fmt_pct(pct_g)} atingido</div></div>
-    <div style="border:1px solid white;border-radius:12px;padding:16px;background:{bg_gb}">
-        <div style="font-size:10px;color:{tc_gb}88;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Bônus Grupo</div>
-        <div style="font-size:18px;font-weight:700;color:{tc_gb}">{"✅ Conquistado" if gb else "❌ Não conquistado"}</div>
-        <div style="font-size:11px;color:{tc_gb}88;margin-top:4px">{"+200 pts para todas" if gb else f"Faltam {t_meta-t_real}"}</div></div>
-    <div style="border:1px solid white;border-radius:12px;padding:16px;background:#0f0f0f">
-        <div style="font-size:10px;color:#47556988;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Base Atual</div>
-        <div style="font-size:22px;font-weight:700;color:#94a3b8">{fmt_int(base_atual)}</div>
-        <div style="font-size:11px;color:#47556988;margin-top:4px">Meta PEF: {fmt_int(base_pef)}</div></div>
-    <div style="border:1px solid white;border-radius:12px;padding:16px;background:{bg_gap}">
-        <div style="font-size:10px;color:{tc_gap}88;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Gap / Bônus</div>
+        <div style="font-size:11px;color:{tc_g};opacity:0.7;margin-top:4px">{fmt_pct(pct_g)} atingido</div></div>
+    <div style="border:1px solid {tc_gb}44;border-radius:12px;padding:16px;background:{bg_gb};height:90px;box-sizing:border-box;overflow:hidden">
+        <div style="font-size:10px;color:{tc_gb};opacity:0.7;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Bônus Grupo</div>
+        <div style="font-size:16px;font-weight:700;color:{tc_gb}">{"✅ Conquistado" if gb else "❌ Não conquistado"}</div>
+        <div style="font-size:11px;color:{tc_gb};opacity:0.7;margin-top:4px">{"+200 pts para todas" if gb else f"Faltam {t_meta-t_real}"}</div></div>
+    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;height:90px;box-sizing:border-box;overflow:hidden">
+        <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Base Atual</div>
+        <div style="font-size:22px;font-weight:700;color:#1e293b">{fmt_int(base_atual)}</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px">Meta PEF: {fmt_int(base_pef)}</div></div>
+    <div style="border:1px solid {tc_gap}44;border-radius:12px;padding:16px;background:{bg_gap};height:90px;box-sizing:border-box;overflow:hidden">
+        <div style="font-size:10px;color:{tc_gap};opacity:0.7;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Gap / Bônus</div>
         <div style="font-size:22px;font-weight:700;color:{tc_gap}">{("+" if gap>=0 else "")}{fmt_int(gap)}</div>
-        <div style="font-size:11px;color:{tc_gap}88;margin-top:4px">base atual - meta PEF</div></div>
+        <div style="font-size:11px;color:{tc_gap};opacity:0.7;margin-top:4px">base atual - meta PEF</div></div>
     </div>''',unsafe_allow_html=True)
     # Tabela supervisoras
     res_s=sorted(res,key=lambda x:x['inicios_reinicios'],reverse=True)
     html='<table style="width:100%;border-collapse:collapse">'
-    html+=('<thead><tr style="border-bottom:1px solid #222">'
+    html+=('<thead><tr style="border-bottom:1px solid #e2e8f0">'
            '<th style="text-align:left;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px"># Supervisora</th>'
            '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Realizado</th>'
            '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Meta</th>'
@@ -427,23 +428,17 @@ def pg_base(cid):
         pct_ir=real_ir/meta_ir*100 if meta_ir>0 else 0
         contrib=real_ir/t_meta*100 if t_meta>0 else 0
         _,tc=_cor_ating(pct_ir)
-        pos_bg=["#f59e0b","#94a3b8","#92400e"][pos-1] if pos<=3 else "#1e293b"
-        pos_tc="black" if pos==1 else "white"
-        html+=(f'<tr style="border-bottom:1px solid #111">'
+        pos_bg=["#f59e0b","#94a3b8","#92400e"][pos-1] if pos<=3 else "#e2e8f0"
+        pos_tc="black" if pos==1 else ("white" if pos<=3 else "#475569")
+        html+=(f'<tr style="border-bottom:1px solid #f1f5f9">'
                f'<td style="padding:10px;text-align:left"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:{pos_bg};color:{pos_tc};font-size:11px;font-weight:700;margin-right:10px">{pos}</span>'
-               f'<span style="color:white;font-weight:500;font-size:13px">{nome}</span></td>'
-               f'<td style="padding:10px;text-align:right;color:#cbd5e1;font-size:13px">{real_ir}</td>'
-               f'<td style="padding:10px;text-align:right;color:#475569;font-size:13px">{meta_ir}</td>'
+               f'<span style="color:#0f172a;font-weight:500;font-size:13px">{nome}</span></td>'
+               f'<td style="padding:10px;text-align:right;color:#1e293b;font-size:13px;font-weight:600">{real_ir}</td>'
+               f'<td style="padding:10px;text-align:right;color:#94a3b8;font-size:13px">{meta_ir}</td>'
                f'<td style="padding:10px;text-align:right;color:{tc};font-weight:700;font-size:13px">{fmt_pct(pct_ir)}</td>'
                f'<td style="padding:10px;text-align:right;color:#64748b;font-size:12px">{fmt_pct(contrib)}</td>'
                f'</tr>')
-    html+=('</tbody></table>'
-           f'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:12px;background:#0a0a0a;border-radius:8px;border:1px solid #1e1e1e">'
-           f'<span style="color:#475569;font-size:12px">Total I+R do grupo (setores meta)</span>'
-           f'<div style="display:flex;align-items:center;gap:16px">'
-           f'<span style="color:white;font-size:14px;font-weight:700">{t_real} de {t_meta}</span>'
-           f'<span style="color:{"#4ade80" if pct_g>=100 else "#fbbf24" if pct_g>=95 else "#f87171"};font-size:14px;font-weight:700">{fmt_pct(pct_g)}</span>'
-           f'</div></div>')
+    html+='</tbody></table>'
     st.markdown(html,unsafe_allow_html=True)
 
 # =============================================
@@ -485,7 +480,7 @@ def pg_financeiro(cid):
     df_tab=pd.DataFrame(rows).sort_values('IAF',ascending=False)
     iaf_tag='<span style="background:#1e3a5f;color:#93c5fd;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;margin-left:4px">IAF</span>'
     html='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:900px">'
-    html+=f'<thead><tr style="border-bottom:1px solid #222">'
+    html+=f'<thead><tr style="border-bottom:1px solid #e2e8f0">'
     headers=[('Supervisora','left'),('IAF'+iaf_tag,'right'),('Boticário'+iaf_tag,'right'),('Eudora'+iaf_tag,'right'),('OUI R$','right'),('QDB R$','right'),('Multimarcas'+iaf_tag,'right'),('Penet. Cab'+iaf_tag,'right'),('Penet. Make'+iaf_tag,'right'),('Atividade'+iaf_tag,'right')]
     for h,align in headers:
         html+=f'<th style="text-align:{align};padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">{h}</th>'
@@ -498,8 +493,8 @@ def pg_financeiro(cid):
         return '#f87171'
     for _,r in df_tab.iterrows():
         ic=iaf_color(r['IAF']); cl_badge=badge_iaf(r['Classificação'])
-        html+=(f'<tr style="border-bottom:1px solid #111">'
-               f'<td style="padding:10px;color:white;font-weight:500;font-size:13px;white-space:nowrap">{r["Supervisora"]} {cl_badge}</td>'
+        html+=(f'<tr style="border-bottom:1px solid #f1f5f9">'
+               f'<td style="padding:10px;color:#0f172a;font-weight:500;font-size:13px;white-space:nowrap">{r["Supervisora"]} {cl_badge}</td>'
                f'<td style="padding:10px;text-align:right;color:{ic};font-weight:700;font-size:14px">{fmt_pct(r["IAF"])}</td>'
                f'<td style="padding:10px;text-align:right;color:{pct_color(r["Bot%"],100)};font-size:12px">{fmt_pct(r["Bot%"])}</td>'
                f'<td style="padding:10px;text-align:right;color:{pct_color(r["Eud%"],100)};font-size:12px">{fmt_pct(r["Eud%"])}</td>'
@@ -512,16 +507,16 @@ def pg_financeiro(cid):
                f'</tr>')
     html+='</tbody></table></div>'
     st.markdown(html,unsafe_allow_html=True)
-    # Gráfico evolução IAF
+    # Gráfico evolução Ativos
     st.markdown("<div style='height:24px'></div>",unsafe_allow_html=True)
-    st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">Evolução IAF por Ciclo</p>',unsafe_allow_html=True)
-    evol=[]
-    for c in ciclos[-6:]:
+    st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">Evolução de Ativos por Ciclo</p>',unsafe_allow_html=True)
+    evol_at=[]
+    for c in sorted(ciclos[-6:],key=lambda x:x['id']):
         for rv in get_resultados(c['id'],tipo='financeiro'):
-            evol.append({'Ciclo':c['nome'],'Supervisora':sid_nm.get(rv['setor_id'],str(rv['setor_id'])),'IAF':rv['iaf']})
-    if evol:
-        fig=px.line(pd.DataFrame(evol),x='Ciclo',y='IAF',color='Supervisora',markers=True,color_discrete_sequence=['#4ade80','#fbbf24','#60a5fa','#f87171','#a78bfa','#fb923c'])
-        fig.update_layout(height=280,margin=dict(t=10,b=10),plot_bgcolor='#000',paper_bgcolor='#000',legend=dict(font=dict(color='#94a3b8',size=11)),xaxis=dict(color='#94a3b8',gridcolor='#1e1e1e'),yaxis=dict(color='#94a3b8',gridcolor='#1e1e1e',ticksuffix='%'))
+            evol_at.append({'Ciclo':c['nome'],'Supervisora':sid_nm.get(rv['setor_id'],str(rv['setor_id'])),'Ativos':rv['ativos']})
+    if evol_at:
+        fig=px.line(pd.DataFrame(evol_at),x='Ciclo',y='Ativos',color='Supervisora',markers=True,color_discrete_sequence=['#2563eb','#f59e0b','#16a34a','#dc2626','#7c3aed','#0891b2'])
+        fig.update_layout(height=280,margin=dict(t=10,b=10),plot_bgcolor='white',paper_bgcolor='white',legend=dict(font=dict(color='#475569',size=11)),xaxis=dict(color='#475569',gridcolor='#f1f5f9'),yaxis=dict(color='#475569',gridcolor='#f1f5f9'))
         st.plotly_chart(fig,use_container_width=True)
 
 # =============================================
@@ -531,7 +526,7 @@ def pg_iaf(cid):
     ciclo=get_ciclo_ativo(); ciclos=get_ciclos()
     cs=next((c for c in ciclos if c['id']==cid),ciclo) if cid else ciclo
     if not cs: st.warning("⚠️ Sem ciclo ativo."); return
-    st.markdown('<h1 style="color:white;font-size:22px;font-weight:700;margin-bottom:16px">🎯 IAF — Instrumento de Avaliação</h1>',unsafe_allow_html=True)
+    st.markdown('<h1 style="color:#0f172a;font-size:22px;font-weight:700;margin-bottom:16px">🎯 IAF — Instrumento de Avaliação</h1>',unsafe_allow_html=True)
     cfg={r['chave']:r['valor'] for r in (get_sb().table("configuracoes").select("chave,valor").execute().data or [])}
     res_all=get_resultados(cs['id'])
     if not res_all: st.info("Sem dados para este ciclo."); return
@@ -544,11 +539,11 @@ def pg_iaf(cid):
     card_cls=[
         ('Diamante','💎','#f0f9ff','#1e3a5f'),('Ouro','🥇','#fffbeb','#92400e'),
         ('Prata','🥈','#f8fafc','#475569'),('Bronze','🥉','#fff7ed','#78350f'),
-        ('Não Classificado','—','#0f0f0f','#475569')
+        ('Não Classificado','—','#f8fafc','#64748b')
     ]
     html='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px">'
     for cl,em,bg,tc in card_cls:
-        html+=(f'<div style="border:1px solid white;border-radius:10px;padding:14px;background:{bg};text-align:center">'
+        html+=(f'<div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px;background:{bg};text-align:center;height:90px;box-sizing:border-box">'
                f'<div style="font-size:10px;color:{tc};text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">{cl}</div>'
                f'<div style="font-size:28px;font-weight:700;color:{tc}">{contagem.get(cl,0)}</div>'
                f'<div style="font-size:11px;color:{tc}88;margin-top:4px">{em}</div></div>')
@@ -566,13 +561,13 @@ def pg_iaf(cid):
         pts_needed=int(faixas[prox_faixa]/100*mx)-pts
         return pts_needed if pts_needed>0 else None
     html_rank='<table style="width:100%;border-collapse:collapse">'
-    html_rank+=('<thead><tr style="border-bottom:1px solid #222">'
+    html_rank+=('<thead><tr style="border-bottom:1px solid #e2e8f0">'
                 '<th style="text-align:left;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase"># Supervisora</th>'
                 '<th style="text-align:center;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Tipo</th>'
                 '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">IAF</th>'
                 '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Pontuação</th>'
                 '<th style="text-align:center;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Classificação</th>'
-                '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Falta p/ subir</th>'
+                '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Pts p/ segmentar</th>'
                 '</tr></thead><tbody>')
     for pos,r in enumerate(res_s,1):
         nm=sid_nm.get(r['setor_id'],str(r['setor_id']))
@@ -580,18 +575,18 @@ def pg_iaf(cid):
         ic=iaf_color(r['iaf'])
         pts=int(r['pontuacao_obtida']); mx=int(r['pontuacao_maxima'])
         gap_pts=gap_prox(r['iaf'],r['classificacao'],pts,mx)
-        gap_str=f'+{gap_pts} pts' if gap_pts else '✓ Máximo'
-        gap_c='#4ade80' if not gap_pts else ('#4ade80' if gap_pts<=30 else '#fbbf24' if gap_pts<=80 else '#f87171')
+        gap_str=f'+{gap_pts} pts' if gap_pts else '—'
+        gap_c='#64748b' if not gap_pts else ('#16a34a' if gap_pts<=30 else '#d97706' if gap_pts<=80 else '#dc2626')
         pos_bg=["#f59e0b","#94a3b8","#92400e"][pos-1] if pos<=3 else "#1e293b"
         pos_tc="black" if pos==1 else "white"
-        html_rank+=(f'<tr style="border-bottom:1px solid #111">'
+        html_rank+=(f'<tr style="border-bottom:1px solid #f1f5f9">'
                     f'<td style="padding:10px"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:{pos_bg};color:{pos_tc};font-size:11px;font-weight:700;margin-right:10px">{pos}</span>'
-                    f'<span style="color:white;font-weight:500;font-size:13px">{nm}</span></td>'
-                    f'<td style="padding:10px;text-align:center"><span style="font-size:10px;color:#334155;background:#111;padding:2px 6px;border-radius:4px">{tipo}</span></td>'
+                    f'<span style="color:#0f172a;font-weight:500;font-size:13px">{nm}</span></td>'
+                    f'<td style="padding:10px;text-align:center"><span style="font-size:10px;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px">{tipo}</span></td>'
                     f'<td style="padding:10px;text-align:right;color:{ic};font-weight:700;font-size:14px">{fmt_pct(r["iaf"])}</td>'
                     f'<td style="padding:10px;text-align:right;color:#64748b;font-size:12px">{pts} / {mx}</td>'
                     f'<td style="padding:10px;text-align:center">{badge_iaf(r["classificacao"])}</td>'
-                    f'<td style="padding:10px;text-align:right;color:{gap_c};font-size:12px">{gap_str}</td>'
+                    f'<td style="padding:10px;text-align:right;color:{gap_c};font-size:12px;font-weight:600">{gap_str}</td>'
                     f'</tr>')
     html_rank+='</tbody></table>'
     st.markdown(html_rank,unsafe_allow_html=True)
@@ -599,13 +594,13 @@ def pg_iaf(cid):
     st.markdown("<div style='height:24px'></div>",unsafe_allow_html=True)
     st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">Evolução IAF por Ciclo</p>',unsafe_allow_html=True)
     evol=[]
-    for c in ciclos[-6:]:
+    for c in sorted(ciclos[-6:],key=lambda x:x['id']):
         for rv in get_resultados(c['id']):
             nm=sid_nm.get(rv['setor_id'],str(rv['setor_id']))
             evol.append({'Ciclo':c['nome'],'Supervisora':nm,'IAF':rv['iaf']})
     if evol:
-        fig=px.line(pd.DataFrame(evol),x='Ciclo',y='IAF',color='Supervisora',markers=True,color_discrete_sequence=['#4ade80','#fbbf24','#60a5fa','#f87171','#a78bfa','#fb923c','#34d399','#f472b6'])
-        fig.update_layout(height=300,margin=dict(t=10,b=10),plot_bgcolor='#000',paper_bgcolor='#000',legend=dict(font=dict(color='#94a3b8',size=11)),xaxis=dict(color='#94a3b8',gridcolor='#1e1e1e'),yaxis=dict(color='#94a3b8',gridcolor='#1e1e1e',ticksuffix='%'))
+        fig=px.line(pd.DataFrame(evol),x='Ciclo',y='IAF',color='Supervisora',markers=True,color_discrete_sequence=['#2563eb','#f59e0b','#16a34a','#dc2626','#7c3aed','#0891b2','#ea580c','#db2777'])
+        fig.update_layout(height=300,margin=dict(t=10,b=10),plot_bgcolor='white',paper_bgcolor='white',legend=dict(font=dict(color='#475569',size=11)),xaxis=dict(color='#475569',gridcolor='#f1f5f9'),yaxis=dict(color='#475569',gridcolor='#f1f5f9',ticksuffix='%'))
         st.plotly_chart(fig,use_container_width=True)
 
 # =============================================
@@ -615,7 +610,7 @@ def pg_er(cid):
     ciclo=get_ciclo_ativo(); ciclos=get_ciclos()
     cs=next((c for c in ciclos if c['id']==cid),ciclo) if cid else ciclo
     if not cs: st.warning("⚠️ Sem ciclo ativo."); return
-    st.markdown('<h1 style="color:white;font-size:22px;font-weight:700;margin-bottom:16px">🏪 ER — Espaço Revendedor</h1>',unsafe_allow_html=True)
+    st.markdown('<h1 style="color:#0f172a;font-size:22px;font-weight:700;margin-bottom:16px">🏪 ER — Espaço Revendedor</h1>',unsafe_allow_html=True)
     res=get_resultados_er(cs['id'])
     if not res: st.info("📊 Sem dados ER para este ciclo."); return
     df=pd.DataFrame(res)
@@ -628,22 +623,22 @@ def pg_er(cid):
     pct_cab_er=rev_cab/rev_er*100 if rev_er>0 else 0
     # KPIs
     html_kpi=f'''<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
-    <div style="border:1px solid white;border-radius:12px;padding:16px;background:#0f0f0f">
-        <div style="font-size:10px;color:#47556988;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Ativos no ER</div>
-        <div style="font-size:22px;font-weight:700;color:#94a3b8">{fmt_int(rev_er)}</div>
-        <div style="font-size:11px;color:#47556988;margin-top:4px">× {fmt_int(total_ativos)} ativos total</div></div>
-    <div style="border:1px solid white;border-radius:12px;padding:16px;background:#0f0f0f">
-        <div style="font-size:10px;color:#47556988;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">No. RV. Multimarcas</div>
-        <div style="font-size:22px;font-weight:700;color:#94a3b8">{fmt_int(rev_multi)}</div>
-        <div style="font-size:11px;color:#47556988;margin-top:4px">dentre os que vieram ao ER</div></div>
-    <div style="border:1px solid white;border-radius:12px;padding:16px;background:#0f0f0f">
-        <div style="font-size:10px;color:#47556988;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Compraram Make</div>
-        <div style="font-size:22px;font-weight:700;color:#94a3b8">{fmt_int(rev_make)} ({fmt_pct(pct_make_er)})</div>
-        <div style="font-size:11px;color:#47556988;margin-top:4px">de {fmt_int(rev_er)} no ER</div></div>
-    <div style="border:1px solid white;border-radius:12px;padding:16px;background:#0f0f0f">
-        <div style="font-size:10px;color:#47556988;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Compraram Cabelos</div>
-        <div style="font-size:22px;font-weight:700;color:#94a3b8">{fmt_int(rev_cab)} ({fmt_pct(pct_cab_er)})</div>
-        <div style="font-size:11px;color:#47556988;margin-top:4px">de {fmt_int(rev_er)} no ER</div></div>
+    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;height:90px;box-sizing:border-box;overflow:hidden">
+        <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Ativos no ER</div>
+        <div style="font-size:22px;font-weight:700;color:#1e293b">{fmt_int(rev_er)}</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px">× {fmt_int(total_ativos)} ativos total</div></div>
+    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;height:90px;box-sizing:border-box;overflow:hidden">
+        <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">No. RV. Multimarcas</div>
+        <div style="font-size:22px;font-weight:700;color:#1e293b">{fmt_int(rev_multi)}</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px">dentre os que vieram ao ER</div></div>
+    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;height:90px;box-sizing:border-box;overflow:hidden">
+        <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Compraram Make</div>
+        <div style="font-size:22px;font-weight:700;color:#1e293b">{fmt_int(rev_make)} ({fmt_pct(pct_make_er)})</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px">de {fmt_int(rev_er)} no ER</div></div>
+    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;height:90px;box-sizing:border-box;overflow:hidden">
+        <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Compraram Cabelos</div>
+        <div style="font-size:22px;font-weight:700;color:#1e293b">{fmt_int(rev_cab)} ({fmt_pct(pct_cab_er)})</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px">de {fmt_int(rev_er)} no ER</div></div>
     </div>'''
     st.markdown(html_kpi,unsafe_allow_html=True)
     # Ranking multimarca
@@ -659,7 +654,7 @@ def pg_er(cid):
             pb=["#f59e0b","#94a3b8","#92400e"][pos-1] if pos<=3 else "#1e293b"
             ptc="black" if pos==1 else "white"
             nm=row.get('usuario_finalizacao',row.get('usuario','—'))
-            html+=(f'<tr style="border-bottom:1px solid #111">'
+            html+=(f'<tr style="border-bottom:1px solid #f1f5f9">'
                    f'<td style="padding:10px"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:{pb};color:{ptc};font-size:11px;font-weight:700;margin-right:10px">{pos}</span>'
                    f'<span style="color:white;font-size:13px;font-weight:500">{nm}</span></td>'
                    f'<td style="padding:10px;text-align:right;color:#475569;font-size:12px">{n} pedidos</td>'
@@ -684,7 +679,7 @@ def pg_er(cid):
     vend_data=_json.loads(get_config(f"er_vend_conv_{cs['id']}","[]") or "[]")
     if vend_data:
         html_v='<table style="width:100%;border-collapse:collapse">'
-        html_v+=('<thead><tr style="border-bottom:1px solid #222">'
+        html_v+=('<thead><tr style="border-bottom:1px solid #e2e8f0">'
                  '<th style="text-align:left;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Vendedor</th>'
                  '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Atendidos</th>'
                  '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Multimarcas</th>'
@@ -697,8 +692,8 @@ def pg_er(cid):
             pmu=float(v.get('pct_multi',0)); pcb=float(v.get('pct_cab',0)); pmk=float(v.get('pct_make',0))
             tk=float(v.get('ticket',0))
             def cc(p): return '#4ade80' if p>=70 else ('#fbbf24' if p>=50 else '#f87171')
-            html_v+=(f'<tr style="border-bottom:1px solid #111">'
-                     f'<td style="padding:10px;color:white;font-weight:500;font-size:13px">{nm}</td>'
+            html_v+=(f'<tr style="border-bottom:1px solid #f1f5f9">'
+                     f'<td style="padding:10px;color:#0f172a;font-weight:500;font-size:13px">{nm}</td>'
                      f'<td style="padding:10px;text-align:right;color:#94a3b8;font-size:13px">{at}</td>'
                      f'<td style="padding:10px;text-align:right;color:{cc(pmu)};font-size:13px;font-weight:600">{fmt_pct(pmu)}</td>'
                      f'<td style="padding:10px;text-align:right;color:{cc(pcb)};font-size:13px;font-weight:600">{fmt_pct(pcb)}</td>'
@@ -716,14 +711,14 @@ def pg_er(cid):
             def tabela_nao_conv(dados,key):
                 if not dados: st.info("Todos convertidos! 🎉"); return
                 html_nc='<table style="width:100%;border-collapse:collapse">'
-                html_nc+=('<thead><tr style="border-bottom:1px solid #222">'
+                html_nc+=('<thead><tr style="border-bottom:1px solid #e2e8f0">'
                           '<th style="text-align:left;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Revendedor</th>'
                           '<th style="text-align:left;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Vendedores que atenderam</th>'
                           '</tr></thead><tbody>')
                 for item in dados[:50]:
                     rv=item.get('revendedor','—'); vends=', '.join(item.get('vendedores',[]))
-                    html_nc+=(f'<tr style="border-bottom:1px solid #111">'
-                              f'<td style="padding:8px 10px;color:#cbd5e1;font-size:12px">{rv}</td>'
+                    html_nc+=(f'<tr style="border-bottom:1px solid #f1f5f9">'
+                              f'<td style="padding:8px 10px;color:#1e293b;font-size:12px">{rv}</td>'
                               f'<td style="padding:8px 10px;color:#f87171;font-size:12px">{vends}</td>'
                               f'</tr>')
                 html_nc+='</tbody></table>'
@@ -745,18 +740,18 @@ def pg_er(cid):
         col_a,col_b=st.columns(2)
         with col_a:
             st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:6px">📍 Por Bairro</p>',unsafe_allow_html=True)
-            html_b='<div style="background:#0a0a0a;border:1px solid #1e1e1e;border-radius:8px;overflow:hidden">'
+            html_b='<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">'
             for i,row in enumerate(bairro_data[:15]):
                 bg="#0f0f0f" if i%2==0 else "#0a0a0a"
-                html_b+=f'<div style="display:flex;justify-content:space-between;padding:6px 12px;background:{bg}"><span style="font-size:12px;color:#94a3b8">{row["Bairro"]}</span><span style="font-size:12px;font-weight:700;color:#cbd5e1">{row["pct"]:.1f}%</span></div>'
+                html_b+=f'<div style="display:flex;justify-content:space-between;padding:6px 12px;background:{bg}"><span style="font-size:12px;color:#475569">{row["Bairro"]}</span><span style="font-size:12px;font-weight:700;color:#1e293b">{row["pct"]:.1f}%</span></div>'
             html_b+='</div>'
             st.markdown(html_b,unsafe_allow_html=True)
         with col_b:
             st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:6px">🏅 Por Segmentação</p>',unsafe_allow_html=True)
-            html_s='<div style="background:#0a0a0a;border:1px solid #1e1e1e;border-radius:8px;overflow:hidden"><div style="display:flex;justify-content:space-between;padding:5px 12px;background:#111;border-bottom:1px solid #1e1e1e"><span style="font-size:10px;color:#334155;font-weight:700">SEGMENTAÇÃO</span><span style="font-size:10px;color:#334155;font-weight:700">RVs · % · TICKET</span></div>'
+            html_s='<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden"><div style="display:flex;justify-content:space-between;padding:5px 12px;background:#111;border-bottom:1px solid #1e1e1e"><span style="font-size:10px;color:#334155;font-weight:700">SEGMENTAÇÃO</span><span style="font-size:10px;color:#334155;font-weight:700">RVs · % · TICKET</span></div>'
             for row in seg_data:
                 tk_str=f"R$ {row.get('ticket',0):,.0f}".replace(",",".") if row.get('ticket',0)>0 else "—"
-                html_s+=f'<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-bottom:1px solid #111"><span style="font-size:12px;color:#94a3b8">{row["seg"]}</span><div style="display:flex;gap:10px;align-items:center"><span style="font-size:12px;color:#64748b">{int(row["rvs"])}</span><span style="font-size:12px;font-weight:700;color:#cbd5e1">{row["pct"]:.1f}%</span><span style="font-size:11px;color:#475569;min-width:80px;text-align:right">{tk_str}</span></div></div>'
+                html_s+=f'<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-bottom:1px solid #f1f5f9"><span style="font-size:12px;color:#94a3b8">{row["seg"]}</span><div style="display:flex;gap:10px;align-items:center"><span style="font-size:12px;color:#64748b">{int(row["rvs"])}</span><span style="font-size:12px;font-weight:700;color:#1e293b">{row["pct"]:.1f}%</span><span style="font-size:11px;color:#475569;min-width:80px;text-align:right">{tk_str}</span></div></div>'
             html_s+='</div>'
             st.markdown(html_s,unsafe_allow_html=True)
     # Frequência por dia
@@ -765,23 +760,25 @@ def pg_er(cid):
         st.markdown("<div style='height:16px'></div>",unsafe_allow_html=True)
         st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">📅 Frequência por Dia</p>',unsafe_allow_html=True)
         fig3=go.Figure(go.Bar(x=[r['label'] for r in freq_data],y=[r['rvs'] for r in freq_data],marker_color='#2563eb',text=[r['rvs'] for r in freq_data],textposition='outside',textfont=dict(color='#94a3b8')))
-        fig3.update_layout(height=280,margin=dict(t=30,b=60),xaxis_tickangle=-45,plot_bgcolor='#000',paper_bgcolor='#000',xaxis=dict(color='#94a3b8',gridcolor='#1e1e1e'),yaxis=dict(color='#94a3b8',gridcolor='#1e1e1e',title='Revendedores Únicos'))
+        fig3.update_layout(height=280,margin=dict(t=30,b=60),xaxis_tickangle=-45,plot_bgcolor='white',paper_bgcolor='white',xaxis=dict(color='#475569',gridcolor='#f1f5f9'),yaxis=dict(color='#475569',gridcolor='#f1f5f9',title='Revendedores Únicos'))
         st.plotly_chart(fig3,use_container_width=True)
-    # Comparativo por caixa
-    st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">📊 Comparativo por Caixa</p>',unsafe_allow_html=True)
-    df_g=df.sort_values('pedidos_multi',ascending=False) if 'pedidos_multi' in df.columns else df
-    df_g['pct_multi']=100-df_g['pct_nao_multimarca']
-    tc_list=['#4ade80' if p>=70 else ('#fbbf24' if p>=50 else '#f87171') for p in df_g['pct_multi']]
-    fig=go.Figure(go.Bar(x=df_g['usuario_finalizacao'],y=df_g['pct_multi'],marker_color=tc_list,text=[fmt_pct(p) for p in df_g['pct_multi']],textposition='outside',textfont=dict(color='#94a3b8')))
-    fig.update_layout(height=280,margin=dict(t=30,b=10),plot_bgcolor='#000',paper_bgcolor='#000',xaxis=dict(color='#94a3b8',gridcolor='#1e1e1e'),yaxis=dict(color='#94a3b8',gridcolor='#1e1e1e',ticksuffix='%'))
-    st.plotly_chart(fig,use_container_width=True)
+    # Gráfico conversão por vendedor
+    if vend_data:
+        st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">📊 Conversão por Vendedor</p>',unsafe_allow_html=True)
+        df_vd=pd.DataFrame(vend_data)
+        fig_v=go.Figure()
+        fig_v.add_trace(go.Bar(name='Multimarcas',x=df_vd['vendedor'],y=df_vd['pct_multi'],marker_color='#2563eb',text=[fmt_pct(v) for v in df_vd['pct_multi']],textposition='outside',textfont=dict(color='#475569',size=10)))
+        fig_v.add_trace(go.Bar(name='Cabelos',x=df_vd['vendedor'],y=df_vd['pct_cab'],marker_color='#f59e0b',text=[fmt_pct(v) for v in df_vd['pct_cab']],textposition='outside',textfont=dict(color='#475569',size=10)))
+        fig_v.add_trace(go.Bar(name='Make',x=df_vd['vendedor'],y=df_vd['pct_make'],marker_color='#16a34a',text=[fmt_pct(v) for v in df_vd['pct_make']],textposition='outside',textfont=dict(color='#475569',size=10)))
+        fig_v.update_layout(barmode='group',height=320,margin=dict(t=30,b=10),plot_bgcolor='white',paper_bgcolor='white',legend=dict(font=dict(color='#475569',size=11)),xaxis=dict(color='#475569',gridcolor='#f1f5f9'),yaxis=dict(color='#475569',gridcolor='#f1f5f9',ticksuffix='%',range=[0,110]))
+        st.plotly_chart(fig_v,use_container_width=True)
 
 # =============================================
 # CONFIGURAÇÕES
 # =============================================
 def pg_config():
     requer_perfil("gerencia")
-    st.markdown('<h1 style="color:white;font-size:22px;font-weight:700;margin-bottom:16px">⚙️ Configurações</h1>',unsafe_allow_html=True)
+    st.markdown('<h1 style="color:#0f172a;font-size:22px;font-weight:700;margin-bottom:16px">⚙️ Configurações</h1>',unsafe_allow_html=True)
     aba=st.radio("",["Setores","Pontuação & IAF","Ciclos & Metas","Upload","Usuários","Logs"],horizontal=True)
     st.markdown("<hr style='border-color:#1e1e1e;margin:8px 0 16px'>",unsafe_allow_html=True)
     sb=get_sb(); usuario=st.session_state.get('usuario','sistema')
@@ -1128,8 +1125,8 @@ else:
             sn=st.selectbox("Ciclo",nc,index=ia); cs=next((c for c in ciclos if c['nome']==sn),ciclo_ativo)
             st.session_state.ciclo_sel_id=cs['id'] if cs else None
         st.markdown("<hr style='border-color:#1e1e1e;margin:8px 0'>",unsafe_allow_html=True)
-        MENU=[("🏠 Home","pg_home"),("👥 Base","pg_base"),("💼 Financeiro","pg_financeiro"),("🎯 IAF","pg_iaf"),("🏪 ER","pg_er"),("⚙️ Configurações","pg_config")]
-        if 'pg_atual' not in st.session_state: st.session_state.pg_atual="🏠 Home"
+        MENU=[("📊 Indicadores","pg_home"),("👥 Base","pg_base"),("💼 Financeiro","pg_financeiro"),("🎯 IAF","pg_iaf"),("🏪 ER","pg_er"),("⚙️ Configurações","pg_config")]
+        if 'pg_atual' not in st.session_state: st.session_state.pg_atual="📊 Indicadores"
         for label,_ in MENU:
             ativo=st.session_state.pg_atual==label
             if ativo:
@@ -1153,8 +1150,8 @@ else:
                 ult=pd.to_datetime(logs_sb[0]['data_upload']).strftime('%d/%m/%Y %H:%M')
                 st.markdown(f'<div style="padding:8px;margin-top:8px"><div style="font-size:10px;color:#334155">🕐 Última atualização</div><div style="font-size:11px;color:#475569;margin-top:2px">{ult}</div></div>',unsafe_allow_html=True)
     cid=st.session_state.get('ciclo_sel_id')
-    pg=st.session_state.get('pg_atual',"🏠 Home")
-    if pg=="🏠 Home": pg_home(cid)
+    pg=st.session_state.get('pg_atual',"📊 Indicadores")
+    if pg=="📊 Indicadores": pg_home(cid)
     elif pg=="👥 Base": pg_base(cid)
     elif pg=="💼 Financeiro": pg_financeiro(cid)
     elif pg=="🎯 IAF": pg_iaf(cid)
