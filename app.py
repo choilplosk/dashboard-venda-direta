@@ -1047,33 +1047,19 @@ def pg_config():
                                 tk_v=grp['ValorPraticado'].sum()/at if at>0 else 0
                                 vend_conv.append({'vendedor':vend,'atendidos':at,'pct_multi':round(pmu,1),'pct_cab':round(pcb,1),'pct_make':round(pmk,1),'ticket':round(float(tk_v),2)})
                             _uc(f"er_vend_conv_{ca['id']}",_json.dumps(vend_conv),usuario)
-                            # Não convertidos por tipo
+                            # Não convertidos — apenas revendedores com vendedor identificado
                             nao_conv=[]
-                            # Multimarcas
-                            for pessoa in df_er_v['Pessoa'].dropna().unique():
-                                cpf=int(pessoa)
-                                if cpf not in multi_set:
-                                    vends=list(df_er_v[df_er_v['Pessoa']==pessoa]['Vendedor'].dropna().unique())
-                                    rv_nome=df_er_v[df_er_v['Pessoa']==pessoa]['Revendedor'].dropna().values
-                                    rv=rv_nome[0] if len(rv_nome)>0 else str(cpf)
-                                    if vends: nao_conv.append({'tipo':'multi','revendedor':rv,'vendedores':vends})
-                            # Cabelos
-                            for pessoa in df_er_v['Pessoa'].dropna().unique():
-                                cpf=int(pessoa)
-                                if cpf not in cab_set:
-                                    vends=list(df_er_v[df_er_v['Pessoa']==pessoa]['Vendedor'].dropna().unique())
-                                    rv_nome=df_er_v[df_er_v['Pessoa']==pessoa]['Revendedor'].dropna().values
-                                    rv=rv_nome[0] if len(rv_nome)>0 else str(cpf)
-                                    if vends: nao_conv.append({'tipo':'cab','revendedor':rv,'vendedores':vends})
-                            # Make
-                            for pessoa in df_er_v['Pessoa'].dropna().unique():
-                                cpf=int(pessoa)
-                                if cpf not in mak_set:
-                                    vends=list(df_er_v[df_er_v['Pessoa']==pessoa]['Vendedor'].dropna().unique())
-                                    rv_nome=df_er_v[df_er_v['Pessoa']==pessoa]['Revendedor'].dropna().values
-                                    rv=rv_nome[0] if len(rv_nome)>0 else str(cpf)
-                                    if vends: nao_conv.append({'tipo':'make','revendedor':rv,'vendedores':vends})
-                            _uc(f"er_nao_conv_{ca['id']}",_json.dumps(nao_conv),usuario)
+                            df_com_vend=df_er_v[df_er_v['Vendedor'].notna()]
+                            for pessoa in df_com_vend['Pessoa'].dropna().unique():
+                                try: cpf=int(float(str(pessoa).strip()))
+                                except: continue
+                                vends=list(df_com_vend[df_com_vend['Pessoa']==pessoa]['Vendedor'].dropna().unique())
+                                if not vends: continue
+                                rv=rv_nome_map.get(cpf,str(cpf))
+                                if cpf not in multi_set: nao_conv.append({'tipo':'multi','revendedor':str(rv),'vendedores':[str(v) for v in vends]})
+                                if cpf not in cab_set: nao_conv.append({'tipo':'cab','revendedor':str(rv),'vendedores':[str(v) for v in vends]})
+                                if cpf not in mak_set: nao_conv.append({'tipo':'make','revendedor':str(rv),'vendedores':[str(v) for v in vends]})
+                            _uc(f"er_nao_conv_{ca['id']}",_json.dumps(nao_conv,ensure_ascii=False),usuario)
                         except Exception as e_v: st.warning(f"⚠️ Dados Vendedor: {e_v}")
                     for nm in uploaded: log_upload(ca['id'],nm,usuario)
                     st.success(f"✅ {len(uploaded)} arquivo(s) processados! Ativos: {ag}")
