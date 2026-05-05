@@ -243,8 +243,8 @@ def card_home(label, valor, meta_str=None, pct=0, delta=None, info=False):
             f'{meta_html}{pct_html}{delta_html}</div>')
 
 def badge_iaf(cl):
-    colors={'Diamante':('#1e3a5f','#93c5fd'),'Ouro':('#78350f','#fcd34d'),'Prata':('#1e293b','#cbd5e1'),'Bronze':('#3b1f0a','#d97706')}
-    bg,tc=colors.get(cl,('#111','#475569'))
+    colors={'Diamante':('#dbeafe','#1e3a5f'),'Ouro':('#fef3c7','#92400e'),'Prata':('#f1f5f9','#475569'),'Bronze':('#ffedd5','#78350f')}
+    bg,tc=colors.get(cl,('#f1f5f9','#64748b'))
     em=emoji_class(cl)
     return f'<span style="background:{bg};color:{tc};padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">{em} {cl}</span>'
 
@@ -361,7 +361,7 @@ def pg_home(cid):
 def _status_arqs(cs):
     with st.expander("📁 Status dos Arquivos",expanded=False):
         logs=get_logs(cs['id']); ok={l['arquivo'] for l in logs}; dt={l['arquivo']:l['data_upload'] for l in logs}
-        arqs_base=['Boticario','Cabelos','Eudora','Make','Oui','QDB','Ativos','ER']
+        arqs_base=['Boticario','Cabelos','Eudora','Make','Oui','QDB','Ativos','ER','Vendedor']
         cols=st.columns(4)
         for i,a in enumerate(arqs_base):
             c="#4ade80" if a in ok else "#f87171"
@@ -394,7 +394,7 @@ def pg_base(cid):
     bg_g,tc_g=_cor_ating(pct_g)
     bg_gb="#f0fdf4" if gb else "#fef2f2"; tc_gb="#166534" if gb else "#991b1b"
     bg_gap="#f0fdf4" if gap>=0 else "#fef2f2"; tc_gap="#166534" if gap>=0 else "#991b1b"
-    st.markdown(f'''<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
+    st.markdown(f'''<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px;margin-top:8px">
     <div style="border:1px solid {tc_g}44;border-radius:12px;padding:16px;background:{bg_g};height:90px;box-sizing:border-box;overflow:hidden">
         <div style="font-size:10px;color:{tc_g};opacity:0.7;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Meta do Grupo</div>
         <div style="font-size:22px;font-weight:700;color:{tc_g}">{t_real} / {t_meta}</div>
@@ -417,10 +417,10 @@ def pg_base(cid):
     html='<table style="width:100%;border-collapse:collapse">'
     html+=('<thead><tr style="border-bottom:1px solid #e2e8f0">'
            '<th style="text-align:left;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px"># Supervisora</th>'
-           '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Realizado</th>'
-           '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Meta</th>'
-           '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">%</th>'
-           '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Contrib.</th>'
+           '<th style="text-align:center;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Realizado</th>'
+           '<th style="text-align:center;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Meta</th>'
+           '<th style="text-align:center;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">%</th>'
+           '<th style="text-align:center;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Contrib.</th>'
            '</tr></thead><tbody>')
     for pos,r in enumerate(res_s,1):
         sid=r['setor_id']; nome=sid_nm.get(sid,str(sid)); meta=metas.get(sid,{})
@@ -433,10 +433,10 @@ def pg_base(cid):
         html+=(f'<tr style="border-bottom:1px solid #f1f5f9">'
                f'<td style="padding:10px;text-align:left"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:{pos_bg};color:{pos_tc};font-size:11px;font-weight:700;margin-right:10px">{pos}</span>'
                f'<span style="color:#0f172a;font-weight:500;font-size:13px">{nome}</span></td>'
-               f'<td style="padding:10px;text-align:right;color:#1e293b;font-size:13px;font-weight:600">{real_ir}</td>'
-               f'<td style="padding:10px;text-align:right;color:#94a3b8;font-size:13px">{meta_ir}</td>'
-               f'<td style="padding:10px;text-align:right;color:{tc};font-weight:700;font-size:13px">{fmt_pct(pct_ir)}</td>'
-               f'<td style="padding:10px;text-align:right;color:#64748b;font-size:12px">{fmt_pct(contrib)}</td>'
+               f'<td style="padding:10px;text-align:center;color:#1e293b;font-size:13px;font-weight:600">{real_ir}</td>'
+               f'<td style="padding:10px;text-align:center;color:#94a3b8;font-size:13px">{meta_ir}</td>'
+               f'<td style="padding:10px;text-align:center;color:{tc};font-weight:700;font-size:13px">{fmt_pct(pct_ir)}</td>'
+               f'<td style="padding:10px;text-align:center;color:#64748b;font-size:12px">{fmt_pct(contrib)}</td>'
                f'</tr>')
     html+='</tbody></table>'
     st.markdown(html,unsafe_allow_html=True)
@@ -479,33 +479,53 @@ def pg_financeiro(cid):
         })
     df_tab=pd.DataFrame(rows).sort_values('IAF',ascending=False)
     iaf_tag='<span style="background:#1e3a5f;color:#93c5fd;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;margin-left:4px">IAF</span>'
-    html='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:900px">'
+    html='<div style="overflow-x:auto"><table id="fin-table" style="width:100%;border-collapse:collapse;min-width:900px">'
     html+=f'<thead><tr style="border-bottom:1px solid #e2e8f0">'
-    headers=[('Supervisora','left'),('IAF'+iaf_tag,'right'),('Boticário'+iaf_tag,'right'),('Eudora'+iaf_tag,'right'),('OUI R$','right'),('QDB R$','right'),('Multimarcas'+iaf_tag,'right'),('Penet. Cab'+iaf_tag,'right'),('Penet. Make'+iaf_tag,'right'),('Atividade'+iaf_tag,'right')]
-    for h,align in headers:
-        html+=f'<th style="text-align:{align};padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">{h}</th>'
+    headers=[('Supervisora','left'),('IAF'+iaf_tag,'center'),('Boticário'+iaf_tag,'center'),('Eudora'+iaf_tag,'center'),('OUI R$','center'),('QDB R$','center'),('Multimarcas'+iaf_tag,'center'),('Penet. Cab'+iaf_tag,'center'),('Penet. Make'+iaf_tag,'center'),('Atividade'+iaf_tag,'center')]
+    for i,(h,align) in enumerate(headers):
+        html+=f'<th onclick="sortTable({i})" style="text-align:{align};padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;cursor:pointer" title="Clique para ordenar">{h} <span id="arr{i}">↕</span></th>'
     html+='</tr></thead><tbody>'
     def pct_color(v,m):
         if m==0: return '#475569'
         p=v/m*100
-        if p>=100: return '#4ade80'
-        if p>=95: return '#fbbf24'
-        return '#f87171'
+        if p>=100: return '#166534'
+        if p>=95: return '#854d0e'
+        return '#991b1b'
     for _,r in df_tab.iterrows():
         ic=iaf_color(r['IAF']); cl_badge=badge_iaf(r['Classificação'])
         html+=(f'<tr style="border-bottom:1px solid #f1f5f9">'
                f'<td style="padding:10px;color:#0f172a;font-weight:500;font-size:13px;white-space:nowrap">{r["Supervisora"]} {cl_badge}</td>'
-               f'<td style="padding:10px;text-align:right;color:{ic};font-weight:700;font-size:14px">{fmt_pct(r["IAF"])}</td>'
-               f'<td style="padding:10px;text-align:right;color:{pct_color(r["Bot%"],100)};font-size:12px">{fmt_pct(r["Bot%"])}</td>'
-               f'<td style="padding:10px;text-align:right;color:{pct_color(r["Eud%"],100)};font-size:12px">{fmt_pct(r["Eud%"])}</td>'
-               f'<td style="padding:10px;text-align:right;color:#475569;font-size:12px">{fmt_moeda(r["OUI_R"])}</td>'
-               f'<td style="padding:10px;text-align:right;color:#475569;font-size:12px">{fmt_moeda(r["QDB_R"])}</td>'
-               f'<td style="padding:10px;text-align:right;color:{pct_color(r["Multi%"],r["Multi_meta"])};font-size:12px">{fmt_pct(r["Multi%"])}</td>'
-               f'<td style="padding:10px;text-align:right;color:{pct_color(r["Cab%"],r["Cab_meta"])};font-size:12px">{fmt_pct(r["Cab%"])}</td>'
-               f'<td style="padding:10px;text-align:right;color:{pct_color(r["Make%"],r["Make_meta"])};font-size:12px">{fmt_pct(r["Make%"])}</td>'
-               f'<td style="padding:10px;text-align:right;color:{pct_color(r["Ativ%"],r["Ativ_meta"])};font-size:12px">{fmt_pct(r["Ativ%"])}</td>'
+               f'<td style="padding:10px;text-align:center;color:{ic};font-weight:700;font-size:14px">{fmt_pct(r["IAF"])}</td>'
+               f'<td style="padding:10px;text-align:center;color:{pct_color(r["Bot%"],100)};font-size:12px">{fmt_pct(r["Bot%"])}</td>'
+               f'<td style="padding:10px;text-align:center;color:{pct_color(r["Eud%"],100)};font-size:12px">{fmt_pct(r["Eud%"])}</td>'
+               f'<td style="padding:10px;text-align:center;color:#475569;font-size:12px">{fmt_moeda(r["OUI_R"])}</td>'
+               f'<td style="padding:10px;text-align:center;color:#475569;font-size:12px">{fmt_moeda(r["QDB_R"])}</td>'
+               f'<td style="padding:10px;text-align:center;color:{pct_color(r["Multi%"],r["Multi_meta"])};font-size:12px">{fmt_pct(r["Multi%"])}</td>'
+               f'<td style="padding:10px;text-align:center;color:{pct_color(r["Cab%"],r["Cab_meta"])};font-size:12px">{fmt_pct(r["Cab%"])}</td>'
+               f'<td style="padding:10px;text-align:center;color:{pct_color(r["Make%"],r["Make_meta"])};font-size:12px">{fmt_pct(r["Make%"])}</td>'
+               f'<td style="padding:10px;text-align:center;color:{pct_color(r["Ativ%"],r["Ativ_meta"])};font-size:12px">{fmt_pct(r["Ativ%"])}</td>'
                f'</tr>')
-    html+='</tbody></table></div>'
+    html+='''</tbody></table></div>
+<script>
+var sortDir={};
+function sortTable(col){
+  var t=document.getElementById("fin-table");
+  if(!t)return;
+  var rows=Array.from(t.querySelectorAll("tbody tr"));
+  sortDir[col]=!sortDir[col];
+  rows.sort(function(a,b){
+    var av=a.cells[col]?a.cells[col].textContent.trim():"";
+    var bv=b.cells[col]?b.cells[col].textContent.trim():"";
+    var an=parseFloat(av.replace(/[^0-9,.-]/g,"").replace(",","."));
+    var bn=parseFloat(bv.replace(/[^0-9,.-]/g,"").replace(",","."));
+    if(!isNaN(an)&&!isNaN(bn))return sortDir[col]?an-bn:bn-an;
+    return sortDir[col]?av.localeCompare(bv,"pt"):bv.localeCompare(av,"pt");
+  });
+  var tb=t.querySelector("tbody");
+  rows.forEach(function(r){tb.appendChild(r);});
+  for(var i=0;i<10;i++){var el=document.getElementById("arr"+i);if(el)el.textContent=i===col?(sortDir[col]?"↑":"↓"):"↕";}
+}
+</script>'''
     st.markdown(html,unsafe_allow_html=True)
     # Gráfico evolução Ativos
     st.markdown("<div style='height:24px'></div>",unsafe_allow_html=True)
@@ -564,10 +584,10 @@ def pg_iaf(cid):
     html_rank+=('<thead><tr style="border-bottom:1px solid #e2e8f0">'
                 '<th style="text-align:left;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase"># Supervisora</th>'
                 '<th style="text-align:center;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Tipo</th>'
-                '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">IAF</th>'
-                '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Pontuação</th>'
+                '<th style="text-align:center;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">IAF</th>'
+                '<th style="text-align:center;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Pontuação</th>'
+                '<th style="text-align:center;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Pts p/ segmentar</th>'
                 '<th style="text-align:center;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Classificação</th>'
-                '<th style="text-align:right;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Pts p/ segmentar</th>'
                 '</tr></thead><tbody>')
     for pos,r in enumerate(res_s,1):
         nm=sid_nm.get(r['setor_id'],str(r['setor_id']))
@@ -583,10 +603,10 @@ def pg_iaf(cid):
                     f'<td style="padding:10px"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:{pos_bg};color:{pos_tc};font-size:11px;font-weight:700;margin-right:10px">{pos}</span>'
                     f'<span style="color:#0f172a;font-weight:500;font-size:13px">{nm}</span></td>'
                     f'<td style="padding:10px;text-align:center"><span style="font-size:10px;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px">{tipo}</span></td>'
-                    f'<td style="padding:10px;text-align:right;color:{ic};font-weight:700;font-size:14px">{fmt_pct(r["iaf"])}</td>'
-                    f'<td style="padding:10px;text-align:right;color:#64748b;font-size:12px">{pts} / {mx}</td>'
+                    f'<td style="padding:10px;text-align:center;color:{ic};font-weight:700;font-size:14px">{fmt_pct(r["iaf"])}</td>'
+                    f'<td style="padding:10px;text-align:center;color:#64748b;font-size:12px">{pts} / {mx}</td>'
+                    f'<td style="padding:10px;text-align:center;color:{gap_c};font-size:12px;font-weight:600">{gap_str}</td>'
                     f'<td style="padding:10px;text-align:center">{badge_iaf(r["classificacao"])}</td>'
-                    f'<td style="padding:10px;text-align:right;color:{gap_c};font-size:12px;font-weight:600">{gap_str}</td>'
                     f'</tr>')
     html_rank+='</tbody></table>'
     st.markdown(html_rank,unsafe_allow_html=True)
@@ -633,11 +653,11 @@ def pg_er(cid):
         <div style="font-size:11px;color:#94a3b8;margin-top:4px">dentre os que vieram ao ER</div></div>
     <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;height:90px;box-sizing:border-box;overflow:hidden">
         <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Compraram Make</div>
-        <div style="font-size:22px;font-weight:700;color:#1e293b">{fmt_int(rev_make)} ({fmt_pct(pct_make_er)})</div>
+        <div style="font-size:18px;font-weight:700;color:#1e293b">{fmt_int(rev_make)} ({fmt_pct(pct_make_er)})</div>
         <div style="font-size:11px;color:#94a3b8;margin-top:4px">de {fmt_int(rev_er)} no ER</div></div>
     <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;height:90px;box-sizing:border-box;overflow:hidden">
         <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Compraram Cabelos</div>
-        <div style="font-size:22px;font-weight:700;color:#1e293b">{fmt_int(rev_cab)} ({fmt_pct(pct_cab_er)})</div>
+        <div style="font-size:18px;font-weight:700;color:#1e293b">{fmt_int(rev_cab)} ({fmt_pct(pct_cab_er)})</div>
         <div style="font-size:11px;color:#94a3b8;margin-top:4px">de {fmt_int(rev_er)} no ER</div></div>
     </div>'''
     st.markdown(html_kpi,unsafe_allow_html=True)
@@ -651,14 +671,14 @@ def pg_er(cid):
         for pos,row in enumerate(sorted(dados,key=lambda x:x[col_v],reverse=True),1):
             v=row[col_v]; n=int(row.get(col_n,0))
             tc='#4ade80' if v>=70 else ('#fbbf24' if v>=50 else '#f87171')
-            pb=["#f59e0b","#94a3b8","#92400e"][pos-1] if pos<=3 else "#1e293b"
-            ptc="black" if pos==1 else "white"
+            pb=["#f59e0b","#94a3b8","#92400e"][pos-1] if pos<=3 else "#e2e8f0"
+            ptc="black" if pos==1 else ("white" if pos<=3 else "#475569")
             nm=row.get('usuario_finalizacao',row.get('usuario','—'))
             html+=(f'<tr style="border-bottom:1px solid #f1f5f9">'
                    f'<td style="padding:10px"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:{pb};color:{ptc};font-size:11px;font-weight:700;margin-right:10px">{pos}</span>'
-                   f'<span style="color:white;font-size:13px;font-weight:500">{nm}</span></td>'
-                   f'<td style="padding:10px;text-align:right;color:#475569;font-size:12px">{n} pedidos</td>'
-                   f'<td style="padding:10px;text-align:right;color:{tc};font-weight:700;font-size:15px">{fmt_pct(v)}</td></tr>')
+                   f'<span style="color:#0f172a;font-size:13px;font-weight:500">{nm}</span></td>'
+                   f'<td style="padding:10px;text-align:center;color:#475569;font-size:12px">{n} pedidos</td>'
+                   f'<td style="padding:10px;text-align:center;color:{tc};font-weight:700;font-size:15px">{fmt_pct(v)}</td></tr>')
         html+='</table>'
         st.markdown(html,unsafe_allow_html=True)
     with tab_m:
@@ -742,7 +762,7 @@ def pg_er(cid):
             st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:6px">📍 Por Bairro</p>',unsafe_allow_html=True)
             html_b='<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">'
             for i,row in enumerate(bairro_data[:15]):
-                bg="#0f0f0f" if i%2==0 else "#0a0a0a"
+                bg="#f8fafc" if i%2==0 else "white"
                 html_b+=f'<div style="display:flex;justify-content:space-between;padding:6px 12px;background:{bg}"><span style="font-size:12px;color:#475569">{row["Bairro"]}</span><span style="font-size:12px;font-weight:700;color:#1e293b">{row["pct"]:.1f}%</span></div>'
             html_b+='</div>'
             st.markdown(html_b,unsafe_allow_html=True)
@@ -1147,7 +1167,9 @@ else:
         if ca_sb:
             logs_sb=get_logs(ca_sb['id'])
             if logs_sb:
-                ult=pd.to_datetime(logs_sb[0]['data_upload']).strftime('%d/%m/%Y %H:%M')
+                _dt=pd.to_datetime(logs_sb[0]['data_upload'],utc=True)
+                try: ult=_dt.tz_convert('America/Sao_Paulo').strftime('%d/%m/%Y %H:%M')
+                except: ult=(_dt-pd.Timedelta(hours=3)).strftime('%d/%m/%Y %H:%M')
                 st.markdown(f'<div style="padding:8px;margin-top:8px"><div style="font-size:10px;color:#334155">🕐 Última atualização</div><div style="font-size:11px;color:#475569;margin-top:2px">{ult}</div></div>',unsafe_allow_html=True)
     cid=st.session_state.get('ciclo_sel_id')
     pg=st.session_state.get('pg_atual',"📊 Indicadores")
