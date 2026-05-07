@@ -694,6 +694,25 @@ def pg_er(cid):
         <div style="font-size:11px;color:{tc_conv};opacity:0.7;margin-top:4px">{fmt_int(er_entradas) + " medidos" if er_entradas>0 else "Carregue a catraca"}</div></div>
     </div>'''
     st.markdown(html_kpi,unsafe_allow_html=True)
+    # Não compraram no último dia da catraca
+    nao_comp_raw=get_config(f"er_nao_comp_dia_{cs['id']}","")
+    if nao_comp_raw:
+        try:
+            nao_comp_data=_json.loads(nao_comp_raw)
+            data_ref=nao_comp_data.get('data','')
+            nomes_nao_comp=nao_comp_data.get('nomes',[])
+            with st.expander(f"⚠️ Entraram e não compraram — {data_ref} ({len(nomes_nao_comp)} revendedores)",expanded=False):
+                if nomes_nao_comp:
+                    html_nc='<table style="width:100%;border-collapse:collapse">'
+                    html_nc+='<thead><tr style="border-bottom:1px solid #e2e8f0"><th style="text-align:left;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">#</th><th style="text-align:left;padding:8px 10px;font-size:10px;color:#475569;font-weight:600;text-transform:uppercase">Revendedor</th></tr></thead><tbody>'
+                    for i,nm in enumerate(sorted(nomes_nao_comp),1):
+                        bg="#f8fafc" if i%2==0 else "white"
+                        html_nc+=f'<tr style="border-bottom:1px solid #f1f5f9;background:{bg}"><td style="padding:8px 10px;color:#94a3b8;font-size:12px">{i}</td><td style="padding:8px 10px;color:#1e293b;font-size:13px">{nm}</td></tr>'
+                    html_nc+='</tbody></table>'
+                    st.markdown(html_nc,unsafe_allow_html=True)
+                else:
+                    st.success("🎉 Todos que entraram compraram!")
+        except: pass
     # Ranking multimarca
     st.markdown('<p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">Ranking por Caixa</p>',unsafe_allow_html=True)
     st.markdown('''<style>
@@ -1106,30 +1125,58 @@ def pg_config():
                             txt=raw.decode('latin-1')
                             func_list=get_funcionarios_er()
                             linhas=txt.split('\n')
-                            registros_cat=[]
+                            registros_cat=[]  # (nome, data)
                             for l in linhas:
                                 l=l.rstrip('\r')
-                                m=_re.match(r'\s+(.+?)\s{2,}([FV])\s+(\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2})',l)
+                                m=_re.match(r'\s+(.+?)\s{2,}([FV])\s+(\d{2}/\d{2}/\d{4})\s+(\d{2}:\d{2})',l)
                                 if m:
                                     nome=m.group(1).strip()
-                                    nome=_re.sub(r'^\d{2}\.\d{3}\.\d{3}\s+','',nome).strip()
-                                    registros_cat.append(nome.upper())
-                            nomes_unicos=list(set(registros_cat))
+                                    nome=_re.sub(r'^\d{2}\.\d{3}\.\d{3}\s+','',nome).strip().upper()
+                                    data=m.group(3).strip()
+                                    registros_cat.append({'nome':nome,'data':data})
+                            # Última data do arquivo
+                            if registros_cat:
+                                df_cat=pd.DataFrame(registros_cat)
+                                df_cat['data_dt']=pd.to_datetime(df_cat['data'],format='%d/%m/%Y')
+                                ultima_data=df_cat['data_dt'].max()
+                                ultima_data_str=ultima_data.strftime('%d/%m/%Y')
+                                # Nomes do dia anterior (última data)
+                                nomes_ultimo_dia=list(df_cat[df_cat['data_dt']==ultima_data]['nome'].unique())
+                                # Nomes únicos do ciclo todo
+                                nomes_ciclo=list(df_cat['nome'].unique())
+                            else:
+                                nomes_ultimo_dia=[]; nomes_ciclo=[]; ultima_data_str=''
                             # Excluir funcionários
-                            nomes_rev=[n for n in nomes_unicos if not _fuzzy_match(n,func_list,0.90)]
-                            entradas=len(nomes_rev)
-                            # Cruzar com compradores (planilha Vendedor)
+                            nomes_rev_ciclo=[n for n in nomes_ciclo if not _fuzzy_match(n,func_list,0.90)]
+                            nomes_rev_dia=[n for n in nomes_ultimo_dia if not _fuzzy_match(n,func_list,0.90)]
+                            entradas=len(nomes_rev_ciclo)
+                            # Compradores do ciclo (planilha Vendedor)
                             compradores_nomes=[]
                             if 'Vendedor' in dfs:
-                                rev_names=list(dfs['Vendedor']['Revendedor'].dropna().str.upper().str.strip().unique())
-                                compradores_nomes=rev_names
-                            elif 'Vendedor' in uploaded:
-                                pass  # already in dfs
-                            matched=sum(1 for n in nomes_rev if _fuzzy_match(n,compradores_nomes,0.90)) if compradores_nomes else 0
+                                compradores_nomes=list(dfs['Vendedor']['Revendedor'].dropna().str.upper().str.strip().unique())
+                            matched=sum(1 for n in nomes_rev_ciclo if _fuzzy_match(n,compradores_nomes,0.90)) if compradores_nomes else 0
                             conv_pct=matched/entradas*100 if entradas>0 else 0
                             _uc(f"er_entradas_{ca['id']}",entradas,usuario)
                             _uc(f"er_conv_pct_{ca['id']}",round(conv_pct,1),usuario)
-                            st.info(f"📊 Catraca: {entradas} revendedores medidos, {matched} compraram → {conv_pct:.1f}% conversão")
+                            # Não compraram no último dia: cruzar nomes do dia com ER daquele dia
+                            nao_comp_dia=[]
+                            if 'ER' in dfs and nomes_rev_dia:
+                                df_er_dia=dfs['ER'][(dfs['ER']['MeioCaptacao']=='VD+')&(dfs['ER']['SituaçãoComercial']=='Entregue')].copy()
+                                df_er_dia['DataCap']=pd.to_datetime(df_er_dia['Data Captação'],dayfirst=True,errors='coerce')
+                                # Nomes que compraram no último dia via Vendedor
+                                compradores_dia=[]
+                                if 'Vendedor' in dfs:
+                                    df_vd=dfs['Vendedor'].copy()
+                                    df_vd['ped_norm']=df_vd['Código Pedido'].astype(str).str.replace('.','',regex=False).str.strip()
+                                    df_er_dia['ped_norm']=df_er_dia['CodigoPedido'].astype(str).str.strip()
+                                    df_er_dia_vd=df_er_dia.merge(df_vd[['ped_norm','Revendedor']].drop_duplicates(),on='ped_norm',how='left')
+                                    mask_dia=df_er_dia_vd['DataCap'].dt.date==ultima_data.date()
+                                    compradores_dia=list(df_er_dia_vd[mask_dia]['Revendedor'].dropna().str.upper().str.strip().unique())
+                                for nome in nomes_rev_dia:
+                                    if not _fuzzy_match(nome,compradores_dia,0.90):
+                                        nao_comp_dia.append(nome)
+                            _uc(f"er_nao_comp_dia_{ca['id']}",_json.dumps({'data':ultima_data_str,'nomes':nao_comp_dia},ensure_ascii=False),usuario)
+                            st.info(f"📊 Catraca: {entradas} medidos no ciclo → {conv_pct:.1f}% conversão | {ultima_data_str}: {len(nomes_rev_dia)} entradas, {len(nao_comp_dia)} não compraram")
                         except Exception as e_cat: st.warning(f"⚠️ Catraca: {e_cat}")
                     for nm in uploaded: log_upload(ca['id'],nm,usuario)
                     st.success(f"✅ {len(uploaded)} arquivo(s) processados! Ativos: {ag}")
