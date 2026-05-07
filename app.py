@@ -972,6 +972,7 @@ def pg_config():
                 try:
                     dfs={}
                     for nm,arq in uploaded.items():
+                        if nm=='Catraca': continue  # handled separately below
                         if nm in ['ER','Ativos','Vendedor']: dfs[nm]=pd.read_excel(arq)
                         else: dfs[nm]=ler_planilha(arq,nm)
                     se=set()
