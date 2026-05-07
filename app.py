@@ -5,6 +5,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import json as _json
 import hashlib
+from difflib import SequenceMatcher
+import re as _re
 
 st.set_page_config(page_title="Dashboard Venda Direta", page_icon="💼", layout="wide")
 
@@ -126,6 +128,17 @@ def class_iaf(iaf,cfg={}):
     if iaf>=float(cfg.get('faixa_prata_min',75)): return 'Prata'
     if iaf>=float(cfg.get('faixa_bronze_min',65)): return 'Bronze'
     return 'Não Classificado'
+
+def _sim(a,b): return SequenceMatcher(None,a.upper(),b.upper()).ratio()
+def _fuzzy_match(nome, lista, limiar=0.90):
+    return any(_sim(nome,f)>=limiar for f in lista)
+
+def get_funcionarios_er():
+    try:
+        val=get_config('funcionarios_er','')
+        if val: return [f.strip() for f in val.split('|') if f.strip()]
+    except: pass
+    return FUNCIONARIOS_ER_DEFAULT
 
 def _cor_ating(pct):
     if pct==0: return "#f8fafc","#64748b"
@@ -253,7 +266,16 @@ def iaf_color(v):
     if v>=75: return '#fbbf24'
     return '#f87171'
 
-ARQS=['Boticario','Cabelos','Eudora','Make','Oui','QDB','Ativos','ER','Vendedor']
+ARQS=['Boticario','Cabelos','Eudora','Make','Oui','QDB','Ativos','ER','Vendedor','Catraca']
+FUNCIONARIOS_ER_DEFAULT=[
+    'AMANDA LIMA VITAL DA SILVA','BIANCA GONCALVES BARRETO','BRUNA LORRANE',
+    'EDINALVA SANTOS DA SILVA','GABRIELA MATOS','INDIANA DOS SANTOS NUNES',
+    'JAIRA VARGAS DE ASSUMPCAO DE OLIVEIRA','JESSICA SILVA DA COSTA',
+    'JOSINALDO DA SILVA','KATIA BRANDAO','KETELLYN DA SILVA NASCIMENTO',
+    'MARCELE PEREIRA RODRIGUES','MARIANA DOS SANTOS LOURENÇO','PAULA MOURA MARQUES',
+    'THAIRINE DE MELLO NASCIMENTO','TIAGO AUGUSTO DE OLIVEIRA',
+    'DEBORA SANTOS DA SILVA','BEATRIZ DAUDT','MICHELLE AFFONSO','PABLO'
+]
 MARCAS_CFG=[('valor_boticario','meta_boticario','Boticário'),('valor_eudora','meta_eudora','Eudora'),('valor_oui','meta_oui','OUI'),('valor_qdb','meta_qdb','QDB')]
 
 # =============================================
@@ -808,7 +830,7 @@ def pg_er(cid):
 def pg_config():
     requer_perfil("gerencia")
     st.markdown('<h1 style="color:#0f172a;font-size:22px;font-weight:700;margin-bottom:16px">⚙️ Configurações</h1>',unsafe_allow_html=True)
-    aba=st.radio("",["Setores","Pontuação & IAF","Ciclos & Metas","Upload","Usuários","Logs"],horizontal=True)
+    aba=st.radio("",["Setores","Pontuação & IAF","Ciclos & Metas","Upload","Funcionários ER","Usuários","Logs"],horizontal=True)
     st.markdown("<hr style='border-color:#1e1e1e;margin:8px 0 16px'>",unsafe_allow_html=True)
     sb=get_sb(); usuario=st.session_state.get('usuario','sistema')
     if aba=="Setores":
@@ -1068,9 +1090,74 @@ def pg_config():
                                 if cpf not in multi_set: nao_conv.append({'tipo':'multi','revendedor':str(rv),'vendedores':[str(v) for v in vends]})
                             _uc(f"er_nao_conv_{ca['id']}",_json.dumps(nao_conv,ensure_ascii=False),usuario)
                         except Exception as e_v: st.warning(f"⚠️ Dados Vendedor: {e_v}")
+                    # Catraca
+                    if 'Catraca' in uploaded:
+                        try:
+                            raw=uploaded['Catraca'].read()
+                            txt=raw.decode('latin-1')
+                            func_list=get_funcionarios_er()
+                            linhas=txt.split('\n')
+                            registros_cat=[]
+                            for l in linhas:
+                                l=l.rstrip('\r')
+                                m=_re.match(r'\s+(.+?)\s{2,}([FV])\s+(\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2})',l)
+                                if m:
+                                    nome=m.group(1).strip()
+                                    nome=_re.sub(r'^\d{2}\.\d{3}\.\d{3}\s+','',nome).strip()
+                                    registros_cat.append(nome.upper())
+                            nomes_unicos=list(set(registros_cat))
+                            # Excluir funcionários
+                            nomes_rev=[n for n in nomes_unicos if not _fuzzy_match(n,func_list,0.90)]
+                            entradas=len(nomes_rev)
+                            # Cruzar com compradores (planilha Vendedor)
+                            compradores_nomes=[]
+                            if 'Vendedor' in dfs:
+                                rev_names=list(dfs['Vendedor']['Revendedor'].dropna().str.upper().str.strip().unique())
+                                compradores_nomes=rev_names
+                            elif 'Vendedor' in uploaded:
+                                pass  # already in dfs
+                            matched=sum(1 for n in nomes_rev if _fuzzy_match(n,compradores_nomes,0.90)) if compradores_nomes else 0
+                            conv_pct=matched/entradas*100 if entradas>0 else 0
+                            _uc(f"er_entradas_{ca['id']}",entradas,usuario)
+                            _uc(f"er_conv_pct_{ca['id']}",round(conv_pct,1),usuario)
+                            st.info(f"📊 Catraca: {entradas} revendedores medidos, {matched} compraram → {conv_pct:.1f}% conversão")
+                        except Exception as e_cat: st.warning(f"⚠️ Catraca: {e_cat}")
                     for nm in uploaded: log_upload(ca['id'],nm,usuario)
                     st.success(f"✅ {len(uploaded)} arquivo(s) processados! Ativos: {ag}")
                 except Exception as e: st.error(f"❌ Erro: {e}")
+    elif aba=="Funcionários ER":
+        requer_perfil("admin")
+        st.markdown('<span style="color:#64748b;font-size:12px">Nomes excluídos do relatório da catraca. Use o nome exatamente como aparece no relatório.</span>',unsafe_allow_html=True)
+        st.markdown("<div style='height:8px'></div>",unsafe_allow_html=True)
+        func_atual=get_funcionarios_er()
+        st.markdown(f'<span style="color:#475569;font-size:12px">{len(func_atual)} funcionários cadastrados</span>',unsafe_allow_html=True)
+        # Show current list
+        html_f='<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin:8px 0;columns:2;column-gap:16px">'
+        for f in sorted(func_atual):
+            html_f+=f'<div style="font-size:12px;color:#475569;padding:2px 0">{f}</div>'
+        html_f+='</div>'
+        st.markdown(html_f,unsafe_allow_html=True)
+        st.markdown("<div style='height:8px'></div>",unsafe_allow_html=True)
+        col_a,col_b=st.columns(2)
+        with col_a:
+            st.markdown('<span style="color:#475569;font-size:12px;font-weight:600">Adicionar funcionário</span>',unsafe_allow_html=True)
+            novo_func=st.text_input("Nome (como aparece na catraca)",key="novo_func",label_visibility="collapsed")
+            if st.button("➕ Adicionar",key="add_func"):
+                if novo_func.strip():
+                    nova_lista=func_atual+[novo_func.strip().upper()]
+                    set_config('funcionarios_er','|'.join(nova_lista),usuario)
+                    st.success(f"✅ {novo_func.upper()} adicionado!"); st.rerun()
+        with col_b:
+            st.markdown('<span style="color:#475569;font-size:12px;font-weight:600">Remover funcionário</span>',unsafe_allow_html=True)
+            rem_func=st.selectbox("Selecionar para remover",['']+ sorted(func_atual),key="rem_func",label_visibility="collapsed")
+            if st.button("🗑️ Remover",key="del_func"):
+                if rem_func:
+                    nova_lista=[f for f in func_atual if f!=rem_func]
+                    set_config('funcionarios_er','|'.join(nova_lista),usuario)
+                    st.success(f"✅ {rem_func} removido!"); st.rerun()
+        if st.button("🔄 Restaurar lista padrão",key="rst_func"):
+            set_config('funcionarios_er','|'.join(FUNCIONARIOS_ER_DEFAULT),usuario)
+            st.success("Lista restaurada!"); st.rerun()
     elif aba=="Usuários":
         requer_perfil("admin")
         st.markdown('<span style="color:#94a3b8;font-size:12px">Gerencie os usuários do sistema.</span>',unsafe_allow_html=True)
