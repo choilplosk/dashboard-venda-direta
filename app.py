@@ -668,7 +668,10 @@ def pg_er(cid):
     pct_make_er=rev_make/rev_er*100 if rev_er>0 else 0
     pct_cab_er=rev_cab/rev_er*100 if rev_er>0 else 0
     # KPIs
-    html_kpi=f'''<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
+    er_entradas=int(get_config(f"er_entradas_{cs['id']}",0) or 0)
+    er_conv_pct=float(get_config(f"er_conv_pct_{cs['id']}",0) or 0)
+    bg_conv,tc_conv=_cor_ating(er_conv_pct)
+    html_kpi=f'''<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px">
     <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;min-height:85px;box-sizing:border-box">
         <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Ativos no ER</div>
         <div style="font-size:22px;font-weight:700;color:#1e293b">{fmt_int(rev_er)}</div>
@@ -685,6 +688,10 @@ def pg_er(cid):
         <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Compraram Cabelos</div>
         <div style="font-size:18px;font-weight:700;color:#1e293b">{fmt_int(rev_cab)} ({fmt_pct(pct_cab_er)})</div>
         <div style="font-size:11px;color:#94a3b8;margin-top:4px">de {fmt_int(rev_er)} no ER</div></div>
+    <div style="border:1px solid {tc_conv}44;border-radius:12px;padding:16px;background:{bg_conv};min-height:85px;box-sizing:border-box">
+        <div style="font-size:10px;color:{tc_conv};opacity:0.8;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Conversão de Vendas</div>
+        <div style="font-size:22px;font-weight:700;color:{tc_conv}">{fmt_pct(er_conv_pct) if er_entradas>0 else "—"}</div>
+        <div style="font-size:11px;color:{tc_conv};opacity:0.7;margin-top:4px">{fmt_int(er_entradas) + " medidos" if er_entradas>0 else "Carregue a catraca"}</div></div>
     </div>'''
     st.markdown(html_kpi,unsafe_allow_html=True)
     # Ranking multimarca
@@ -952,12 +959,13 @@ def pg_config():
         st.markdown(f'<span style="color:#94a3b8;font-size:13px">Ciclo: <b style="color:white">{ca["nome"]}</b></span>',unsafe_allow_html=True)
         st.markdown("<div style='height:12px'></div>",unsafe_allow_html=True)
         uploaded={}
-        arqs_labels={'Boticario':'Boticário','Cabelos':'Cabelos','Eudora':'Eudora','Make':'Make','Oui':'OUI','QDB':'QDB','Ativos':'Ativos','ER':'ER','Vendedor':'Vendedor (itens por vendedor)'}
+        arqs_labels={'Boticario':'Boticário','Cabelos':'Cabelos','Eudora':'Eudora','Make':'Make','Oui':'OUI','QDB':'QDB','Ativos':'Ativos','ER':'ER','Vendedor':'Vendedor (itens por vendedor)','Catraca':'Catraca (relatório roleta .txt)'}
         c1u,c2u=st.columns(2)
         for i,(nm,lbl) in enumerate(arqs_labels.items()):
             with (c1u if i%2==0 else c2u):
                 st.markdown(f'<div style="font-size:13px;color:#94a3b8;font-weight:500;margin-bottom:4px">📁 {lbl}</div>',unsafe_allow_html=True)
-                f=st.file_uploader(f"Selecionar {lbl}",type=['xlsx'],key=f"up{nm}",label_visibility="collapsed")
+                tipos=['xlsx'] if nm!='Catraca' else ['txt']
+                f=st.file_uploader(f"Selecionar {lbl}",type=tipos,key=f"up{nm}",label_visibility="collapsed")
                 if f: uploaded[nm]=f
         if uploaded and st.button("🚀 Processar",use_container_width=True,type="primary"):
             with st.spinner("Processando..."):
