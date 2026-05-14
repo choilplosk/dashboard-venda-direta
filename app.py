@@ -915,18 +915,18 @@ def pg_config():
             with st.expander("➕ Novo ciclo"):
                 nc=st.text_input("Nome (ex: 05/2026)"); d1,d2=st.columns(2); di=d1.date_input("Início"); dfc=d2.date_input("Fim")
                 if st.button("Criar"):
-    if nc:
-        try:
-            sb.table("ciclos").insert({
-                "nome": nc,
-                "data_inicio": str(di),
-                "data_fim": str(dfc),
-                "ativo": True
-            }).execute()
-            st.success("Criado!")
-            st.rerun()
-        except Exception as e:
-            st.error(f"❌ Erro ao criar ciclo: {e}")
+                   if nc:
+                       try:
+                           sb.table("ciclos").insert({
+                           "nome": nc,
+                           "data_inicio": str(di),
+                           "data_fim": str(dfc),
+                           "ativo": True
+                            }).execute()
+                           st.success("Criado!")
+                           st.rerun()
+                    except Exception as e:
+                          st.error(f"❌ Erro ao criar ciclo: {e}")
     else:
         st.warning("Informe um nome para o ciclo.")
             for c in get_ciclos():
